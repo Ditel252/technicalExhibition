@@ -44,6 +44,6 @@ except KeyboardInterrupt:
 
 finally:
     for i in range(0, 8, 1):
-        motor[i].escOff()
+        motor[i].BLDC_off()
     
     print("esc off")
