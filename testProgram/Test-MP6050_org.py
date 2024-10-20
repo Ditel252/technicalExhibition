@@ -10,7 +10,6 @@ PWR_MGMT_1 = 0x6B
 ACCEL_XOUT_H = 0x3B
 GYRO_XOUT_H = 0x43
 
-Class Cteamte
 # I2Cバスに接続
 bus = smbus.SMBus(1)
 
@@ -60,6 +59,10 @@ def calibrate_mpu(samples=1000):
     accel_offsets['z'] -= 16384
 
     print("キャリブレーション完了")
+    
+    print("X:{:f} | Y:{:f} | Z{:f}".format(accel_offsets['x'], accel_offsets['y'], accel_offsets['z']))
+    
+    time.sleep(5)
 
     return gyro_offsets, accel_offsets
 
@@ -103,7 +106,7 @@ class KalmanFilter:
         return self.angle
 
 # 姿勢角度を計算
-def calculate_angles(kalman_pitch, kalman_roll, kalman_yaw, prev_yaw_rate, dt, gyro_offsets, accel_offsets):
+def calculate_angles(kalman_pitch, kalman_roll, prev_yaw_rate, dt, gyro_offsets, accel_offsets):
     acc_x = read_raw_data(ACCEL_XOUT_H) - accel_offsets['x']
     acc_y = read_raw_data(ACCEL_XOUT_H + 2) - accel_offsets['y']
     acc_z = read_raw_data(ACCEL_XOUT_H + 4) - accel_offsets['z']
@@ -119,12 +122,10 @@ def calculate_angles(kalman_pitch, kalman_roll, kalman_yaw, prev_yaw_rate, dt, g
     roll_rate = gyro_y / 131.0
     yaw_rate = gyro_z / 131.0
 
-    # カルマンフィルタを使って姿勢角を計算
     pitch = kalman_pitch.get_angle(accel_pitch, pitch_rate, dt)
     roll = kalman_roll.get_angle(accel_roll, roll_rate, dt)
 
-    # ヨー角はジャイロデータを基にカルマンフィルタで補正
-    yaw = kalman_yaw.get_angle(0, yaw_rate, dt)
+    yaw = yaw_rate + prev_yaw_rate * dt
 
     return pitch, roll, yaw, pitch_rate, roll_rate, yaw_rate, acc_x, acc_y, acc_z
 
@@ -137,10 +138,13 @@ gyro_offsets, accel_offsets = calibrate_mpu()
 # カルマンフィルタの初期化
 kalman_pitch = KalmanFilter(0.001, 0.003, 0.03)
 kalman_roll = KalmanFilter(0.001, 0.003, 0.03)
-kalman_yaw = KalmanFilter(0.001, 0.003, 0.03)
 
 prev_time = time.time()
+pitch_total = 0
+roll_total = 0
 yaw_total = 0
+prev_pitch_rate = 0
+prev_roll_rate = 0
 prev_yaw_rate = 0
 
 try:
@@ -148,18 +152,17 @@ try:
         current_time = time.time()
         dt = current_time - prev_time
 
-        pitch, roll, yaw, pitch_rate, roll_rate, yaw_rate, acc_x, acc_y, acc_z = calculate_angles(
-            kalman_pitch, kalman_roll, kalman_yaw, prev_yaw_rate, dt, gyro_offsets, accel_offsets
+        pitch, roll, yaw_increment, pitch_rate, roll_rate, yaw_rate, acc_x, acc_y, acc_z = calculate_angles(
+            kalman_pitch, kalman_roll, prev_yaw_rate, dt, gyro_offsets, accel_offsets
         )
 
-        yaw_total += yaw
+        yaw_total += yaw_increment
 
-        # 各軸の角度、角速度、加速度を表示
         #print(f"Pitch: {pitch:.2f}, Roll: {roll:.2f}, Yaw: {yaw_total:.2f}")
-        print(f"Pitch Rate: {pitch_rate:.2f}, Roll Rate: {roll_rate:.2f}, Yaw Rate: {yaw_rate:.2f}")
-        print(f"Accel X: {acc_x:.2f}, Accel Y: {acc_y:.2f}, Accel Z: {acc_z:.2f}\n")
+        # print(f"Pitch Rate: {pitch_rate:.2f}, Roll Rate: {roll_rate:.2f}, Yaw Rate: {yaw_rate:.2f}")
+        print(f"Accel X: {acc_x:.2f}, Accel Y: {acc_y:.2f}, Accel Z: {acc_z:.2f}")
 
-	prev_pitch_rate = pitch_rate
+        prev_pitch_rate = pitch_rate
         prev_roll_rate = roll_rate
         prev_yaw_rate = yaw_rate
         prev_time = current_time
