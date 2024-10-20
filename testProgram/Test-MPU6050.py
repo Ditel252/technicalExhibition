@@ -153,7 +153,8 @@ try:
         )
  
         yaw_total += yaw_increment
- 
+        
+        print(f"Accel X: {acc:.2f}, Accel Y: {mpu.acclY:.2f}, Accel Z: {mpu.acclZ:.2f}\n")
         print(f"Pitch: {pitch:.2f}, Roll: {roll:.2f}, Yaw: {yaw_total:.2f}")
  
         prev_pitch_rate = pitch_rate

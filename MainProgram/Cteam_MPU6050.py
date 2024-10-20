@@ -81,11 +81,11 @@ class Cteamt_MPU6050:
         highByte = self.i2cBus.read_byte_data(MPU6050_ADDR, _addr)
         lowByte = self.i2cBus.read_byte_data(MPU6050_ADDR, _addr + 1)
         readData = ((highByte << 8) | lowByte)
-        if readData > 0x8000: # > 32768
-            readData = readData - 0x10000 # = readData - 65536
+        if readData > 32768:
+            readData = readData - 65536
         return readData
         
-    def calibrate(self, _numberOfSamples:int=1000):
+    def calibrate(self, _numberOfSamples=1000):
         _gyroOffsets = {'x': 0, 'y': 0, 'z': 0}
         _accelOffsets = {'x': 0, 'y': 0, 'z': 0}
         
@@ -165,7 +165,7 @@ if __name__ == "__main__":
     # 初期化
     mpu = Cteamt_MPU6050()
     
-    mpu.init()
+    mpu.init(True)
 
     # センサーのキャリブレーション
     _gyroOffsets, _accelOffsets = mpu.calibrate()
@@ -184,8 +184,8 @@ if __name__ == "__main__":
             yaw_total += mpu.yaw
 
             # 各軸の角度、角速度、加速度を表示
-            #print(f"Pitch: {pitch:.2f}, Roll: {roll:.2f}, Yaw: {yaw_total:.2f}")
-            print(f"Pitch Rate: {mpu.yawRate:.2f}, Roll Rate: {mpu.rollRate:.2f}, Yaw Rate: {mpu.yawRate:.2f}")
+            # print(f"Pitch: {mpu.pitch:.2f}, Roll: {mpu.roll:.2f}, Yaw: {mpu.yaw:.2f}")
+            # print(f"Pitch Rate: {mpu.pitchRate:.2f}, Roll Rate: {mpu.rollRate:.2f}, Yaw Rate: {mpu.yawRate:.2f}")
             print(f"Accel X: {mpu.acclX:.2f}, Accel Y: {mpu.acclY:.2f}, Accel Z: {mpu.acclZ:.2f}\n")
             
             prev_time = current_time
