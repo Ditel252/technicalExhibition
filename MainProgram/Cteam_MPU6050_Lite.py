@@ -5,7 +5,7 @@ import time
 # MPU6050のI2Cアドレス
 MPU6050_ADDR = 0x68
 
-READ_CYCLE = 10 #[Hz]
+READ_CYCLE = 500 #[Hz] 470Hz Max
 
 # レジスタ
 PWR_MGMT_1 = 0x6B
@@ -42,6 +42,23 @@ class Cteamt_MPU6050:
         if readData > 32768:
             readData = readData - 65536
         return readData
+    
+    def _read12ByteData(self, _addr):
+        _readBytes = self.i2cBus.read_i2c_block_data(MPU6050_ADDR, _addr, (0x43 - 0x3B) + 6)
+        _readData = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        
+        _readData[0] = ((_readBytes[0] << 8) | _readBytes[1])
+        _readData[1] = ((_readBytes[2] << 8) | _readBytes[3])
+        _readData[2] = ((_readBytes[4] << 8) | _readBytes[5])
+        _readData[3] = ((_readBytes[0 + (0x43 - 0x3B)] << 8) | _readBytes[1 + (0x43 - 0x3B)])
+        _readData[4] = ((_readBytes[2 + (0x43 - 0x3B)] << 8) | _readBytes[3 + (0x43 - 0x3B)])
+        _readData[5] = ((_readBytes[4 + (0x43 - 0x3B)] << 8) | _readBytes[5 + (0x43 - 0x3B)])
+        
+        for _i in range(0, 6, 1):
+            if (_readData[_i] > 32768):
+                _readData[_i] = _readData[_i] - 65536
+        
+        return _readData
         
     def calibrate(self, _numberOfSamples=10):
         _gyroOffsets = {'x': 0, 'y': 0, 'z': 0}
@@ -82,25 +99,16 @@ class Cteamt_MPU6050:
         self.accelOffsets = _accelOffsets
     
     def getAccelAndGyro(self):
-        _accX = self._read2ByteData(ACCEL_XOUT_H) - self.accelOffsets['x']
-        _accY = self._read2ByteData(ACCEL_XOUT_H + 2) - self.accelOffsets['y']
-        _accZ = self._read2ByteData(ACCEL_XOUT_H + 4) - self.accelOffsets['z']
-    
-        _gyroX = self._read2ByteData(GYRO_XOUT_H) - self.gyroOffsets['x']
-        _gyroY = self._read2ByteData(GYRO_XOUT_H + 2) - self.gyroOffsets['y']
-        _gyroZ = self._read2ByteData(GYRO_XOUT_H + 4) - self.gyroOffsets['z']
-    
-        _pitchRate = _gyroX / 131.0
-        _rollRate = _gyroY / 131.0
-        _yawRate = _gyroZ / 131.0
         
-        self.acclX = _accX / 16384.0 * 9.80665
-        self.acclY = _accY / 16384.0 * 9.80665
-        self.acclZ = _accZ / 16384.0 * 9.80665
+        _readData = self._read12ByteData(ACCEL_XOUT_H)
         
-        self.pitchRate = _pitchRate
-        self.rollRate = _rollRate
-        self.yawRate = _yawRate
+        self.acclX = (_readData[0] - self.accelOffsets['x']) * 5.985504150390625E-4 # 9.80665 / 16384.0
+        self.acclY = (_readData[1] - self.accelOffsets['y']) * 5.985504150390625E-4
+        self.acclZ = (_readData[2] - self.accelOffsets['z']) * 5.985504150390625E-4
+    
+        self.pitchRate =    (_readData[3] - self.gyroOffsets['x']) / 131.0
+        self.rollRate =     (_readData[4] - self.gyroOffsets['y']) / 131.0
+        self.yawRate =      (_readData[5] - self.gyroOffsets['z']) / 131.0
 
 
 if __name__ == "__main__":
@@ -115,30 +123,41 @@ if __name__ == "__main__":
     prev_time = time.time()
     yaw_total = 0
     prev_yaw_rate = 0
+    
+    tryStartTime = 0.0
+    tryEndTime = 0.0
 
     try:
-        lastReadTime = time.perf_counter()
         while True:
-
-            mpu.getAccelAndGyro()
-                      
-            nowTime = time.perf_counter()
-            isProgramCycleOK = False
-
-            while ((nowTime - lastReadTime) < (1.0 / READ_CYCLE)):
-                isProgramCycleOK = True
+            lastReadTime = tryStartTime = time.perf_counter()
+            
+            while True:
+                startTime = time.perf_counter_ns()
+                mpu.getAccelAndGyro()
+                endTime = time.perf_counter_ns()
                 
-                nowTime = time.perf_counter()
+                # print("\r{:f}".format(endTime - startTime), end="")
+                        
+                nowTime = tryEndTime =time.perf_counter()
+                isProgramCycleOK = False
+
+                while ((nowTime - lastReadTime) <= (1.0 / READ_CYCLE)):
+                    isProgramCycleOK = True
+                    
+                    nowTime = time.perf_counter()
+                
+                if (isProgramCycleOK):
+                    print("\rf={:10.6f} Err={:e}".format(1.0 / (nowTime - lastReadTime), READ_CYCLE - 1.0 / (nowTime - lastReadTime)),end="")
+                    lastReadTime = nowTime
+                else:
+                    break
+                
+                # print("\raX:{:6.2f} aY:{:6.2f} aZ:{:6.2f} | pR:{:6.2f} rR:{:6.2f} yR:{:6.2f} | t{:.2f}".format(mpu.acclX, mpu.acclY, mpu.acclZ, mpu.pitchRate, mpu.rollRate, mpu.yawRate, nowTime), end="")
+                
+                
+            print("\tFaild Program Cycle. Time={:f}".format(tryEndTime - tryStartTime))
             
-            if (isProgramCycleOK):
-                lastReadTime = nowTime
-            else:
-                break
-            
-            print("aX:{:6.2f} aY:{:6.2f} aZ:{:6.2f} | pR:{:6.2f} rR:{:6.2f} yR:{:6.2f} | t{:.2f}".format(mpu.acclX, mpu.acclY, mpu.acclZ, mpu.pitchRate, mpu.rollRate, mpu.yawRate, nowTime))
-            
-            
-        print("Faild Program Cycle")
+            READ_CYCLE -= 5
                 
     except KeyboardInterrupt:
         print("プログラム終了")
