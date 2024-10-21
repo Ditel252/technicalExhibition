@@ -5,7 +5,9 @@ import time
 # MPU6050のI2Cアドレス
 MPU6050_ADDR = 0x68
 
-READ_CYCLE = 500 #[Hz] 470Hz Max
+READ_CYCLE = 300 #[Hz] 470Hz Max
+
+CALIBRATION_TIME = 1000
 
 # レジスタ
 PWR_MGMT_1 = 0x6B
@@ -14,6 +16,28 @@ GYRO_XOUT_H = 0x43
 
 lastReadTime:float = 0.0
 isProgramCycleOK:bool = False
+
+class Simpson:
+    def init(self):
+        self.sumOfEven:float = 0.0
+        self.sumOfOdd:float = 0.0
+        self.sumCount:int = 0
+        
+        self.ans:float = 0.0
+
+    def simpson(self, _value:float, _dt:float):
+        if(self.sumCount == 1): # 奇数の時の式
+            self.sumOfOdd += _value
+            
+            self.sumCount = 0
+            return False
+        else:   # 偶数の時の式
+            self.ans = (_dt / 3.0) * (0.0 + _value + 4.0 * self.sumOfOdd + 2.0 * self.sumOfEven)
+            
+            self.sumOfEven += _value
+            self.sumCount += 1
+            
+            return True
 
 class Cteamt_MPU6050:
     def init(self, _isDebugEnable:bool):
@@ -32,8 +56,24 @@ class Cteamt_MPU6050:
         self.acclZ:float = 0.0
         
         self.pitchRate:float = 0.0
-        self.rollRate = 0.0
-        self.yawRate = 0.0
+        self.rollRate:float = 0.0
+        self.yawRate:float = 0.0
+        
+        self.pitchRateMem:float = [0.0, 0.0, 0.0]
+        self.rollRateMem:float = [0.0, 0.0, 0.0]
+        self.yawRateMem:float = [0.0, 0.0, 0.0]
+        
+        self.pitch:float = 0.0
+        self.roll:float = 0.0
+        self.yaw:float = 0.0
+        
+        self.pitchSimpson = Simpson()
+        self.rollSimpson = Simpson()
+        self.yawSimpson = Simpson()
+        
+        self.pitchSimpson.init()
+        self.rollSimpson.init()
+        self.yawSimpson.init()
         
     def _read2ByteData(self, _addr):
         highByte = self.i2cBus.read_byte_data(MPU6050_ADDR, _addr)
@@ -60,7 +100,7 @@ class Cteamt_MPU6050:
         
         return _readData
         
-    def calibrate(self, _numberOfSamples=10):
+    def calibrate(self, _numberOfSamples=CALIBRATION_TIME):
         _gyroOffsets = {'x': 0, 'y': 0, 'z': 0}
         _accelOffsets = {'x': 0, 'y': 0, 'z': 0}
         
@@ -109,7 +149,15 @@ class Cteamt_MPU6050:
         self.pitchRate =    (_readData[3] - self.gyroOffsets['x']) / 131.0
         self.rollRate =     (_readData[4] - self.gyroOffsets['y']) / 131.0
         self.yawRate =      (_readData[5] - self.gyroOffsets['z']) / 131.0
-
+        
+    def getAngle(self, _pitchRate, _rollRate, _yawRate, _dt):
+        self.pitchSimpson.simpson(_pitchRate, _dt)
+        self.rollSimpson.simpson(_rollRate, _dt)
+        self.yawSimpson.simpson(_yawRate, _dt)
+        
+        self.pitch = self.pitchSimpson.ans
+        self.roll = self.rollSimpson.ans
+        self.yaw = self.yawSimpson.ans
 
 if __name__ == "__main__":
     # 初期化
@@ -132,11 +180,7 @@ if __name__ == "__main__":
             lastReadTime = tryStartTime = time.perf_counter()
             
             while True:
-                startTime = time.perf_counter_ns()
                 mpu.getAccelAndGyro()
-                endTime = time.perf_counter_ns()
-                
-                # print("\r{:f}".format(endTime - startTime), end="")
                         
                 nowTime = tryEndTime =time.perf_counter()
                 isProgramCycleOK = False
@@ -147,12 +191,15 @@ if __name__ == "__main__":
                     nowTime = time.perf_counter()
                 
                 if (isProgramCycleOK):
-                    print("\rf={:10.6f} Err={:e}".format(1.0 / (nowTime - lastReadTime), READ_CYCLE - 1.0 / (nowTime - lastReadTime)),end="")
+                    # print("\rf={:10.6f} Err={:e}".format(1.0 / (nowTime - lastReadTime), READ_CYCLE - 1.0 / (nowTime - lastReadTime)),end="")
                     lastReadTime = nowTime
                 else:
                     break
                 
+                mpu.getAngle(mpu.pitchRate, mpu.rollRate, mpu.yawRate, 1.0 / READ_CYCLE)
+                
                 # print("\raX:{:6.2f} aY:{:6.2f} aZ:{:6.2f} | pR:{:6.2f} rR:{:6.2f} yR:{:6.2f} | t{:.2f}".format(mpu.acclX, mpu.acclY, mpu.acclZ, mpu.pitchRate, mpu.rollRate, mpu.yawRate, nowTime), end="")
+                print("\rroll:{:6.2f} pitch:{:6.2f} yaw:{:6.2f}".format(mpu.pitch, mpu.roll, mpu.yaw), end="")
                 
                 
             print("\tFaild Program Cycle. Time={:f}".format(tryEndTime - tryStartTime))
