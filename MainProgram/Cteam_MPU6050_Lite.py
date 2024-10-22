@@ -174,7 +174,7 @@ class Cteam_MPU6050_Cal:
         
         return _readData
     
-    def getAccelAndGyro(self, _readData):
+    def getAcclAndGyro(self, _readData):
         self.acclX = (_readData[0] - self.acclOffsets['x']) * 5.985504150390625E-4 # 9.80665 / 16384.0
         self.acclY = (_readData[1] - self.acclOffsets['y']) * 5.985504150390625E-4
         self.acclZ = (_readData[2] - self.acclOffsets['z']) * 5.985504150390625E-4
@@ -223,7 +223,7 @@ if __name__ == "__main__":
             lastReadTime = tryStartTime = time.perf_counter()
             
             while True:
-                mpu.getAccelAndGyro()
+                mpu.getAcclAndGyro()
                         
                 nowTime = tryEndTime =time.perf_counter()
                 isProgramCycleOK = False
