@@ -19,6 +19,9 @@ isProgramCycleOK:bool = False
 
 class Simpson:
     def init(self):
+        self.gyroOffsets = {'x': 0, 'y': 0, 'z': 0}
+        self.acclOffsets = {'x': 0, 'y': 0, 'z': 0}
+        
         self.sumOfEven:float = 0.0
         self.sumOfOdd:float = 0.0
         self.sumCount:int = 0
@@ -38,18 +41,85 @@ class Simpson:
             self.sumCount += 1
             
             return True
-
-class Cteamt_MPU6050:
+        
+class Cteam_MPU6050_I2c:
     def init(self, _isDebugEnable:bool):
         self.i2cBus = smbus.SMBus(1)
         self.i2cBus.write_byte_data(MPU6050_ADDR, PWR_MGMT_1, 0)
         self.isDebugEnable = _isDebugEnable
+    
+    def _read2ByteData(self, _addr):
+        highByte = self.i2cBus.read_byte_data(MPU6050_ADDR, _addr)
+        lowByte = self.i2cBus.read_byte_data(MPU6050_ADDR, _addr + 1)
+        readData = ((highByte << 8) | lowByte)
+        if readData > 32768:
+            readData = readData - 65536
+        return readData
+    
+    def _readAcclAndGyro(self):
+        _readBytes = self.i2cBus.read_i2c_block_data(MPU6050_ADDR, ACCEL_XOUT_H, (0x43 - 0x3B) + 6)
+        _readData = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        
+        _readData[0] = ((_readBytes[0] << 8) | _readBytes[1])
+        _readData[1] = ((_readBytes[2] << 8) | _readBytes[3])
+        _readData[2] = ((_readBytes[4] << 8) | _readBytes[5])
+        _readData[3] = ((_readBytes[0 + (0x43 - 0x3B)] << 8) | _readBytes[1 + (0x43 - 0x3B)])
+        _readData[4] = ((_readBytes[2 + (0x43 - 0x3B)] << 8) | _readBytes[3 + (0x43 - 0x3B)])
+        _readData[5] = ((_readBytes[4 + (0x43 - 0x3B)] << 8) | _readBytes[5 + (0x43 - 0x3B)])
+        
+        for _i in range(0, 6, 1):
+            if (_readData[_i] > 32768):
+                _readData[_i] = _readData[_i] - 65536
+        
+        return _readData
+    
+    def _readAcclAndGyro_ReadOnly(self): # return 14Bytes
+        return self.i2cBus.read_i2c_block_data(MPU6050_ADDR, ACCEL_XOUT_H, (0x43 - 0x3B) + 6)
+    
+    def calibrate(self, _numberOfSamples=CALIBRATION_TIME):
+        _gyroOffsets = {'x': 0, 'y': 0, 'z': 0}
+        _acclOffsets = {'x': 0, 'y': 0, 'z': 0}
+        
+        if(self.isDebugEnable):
+            print("Start Calibration")
+
+        for _ in range(_numberOfSamples):
+            # ジャイロデータの平均を計算
+            _gyroOffsets['x'] += self._read2ByteData(GYRO_XOUT_H)
+            _gyroOffsets['y'] += self._read2ByteData(GYRO_XOUT_H + 2)
+            _gyroOffsets['z'] += self._read2ByteData(GYRO_XOUT_H + 4)
+
+            # 加速度データの平均を計算
+            _acclOffsets['x'] += self._read2ByteData(ACCEL_XOUT_H)
+            _acclOffsets['y'] += self._read2ByteData(ACCEL_XOUT_H + 2)
+            _acclOffsets['z'] += self._read2ByteData(ACCEL_XOUT_H + 4)
+
+            time.sleep(0.001)  # サンプリングの間隔を調整
+
+        # 平均を取ってオフセット値を算出
+        _gyroOffsets['x'] /= _numberOfSamples
+        _gyroOffsets['y'] /= _numberOfSamples
+        _gyroOffsets['z'] /= _numberOfSamples
+
+        _acclOffsets['x'] /= _numberOfSamples
+        _acclOffsets['y'] /= _numberOfSamples
+        _acclOffsets['z'] /= _numberOfSamples
+
+        # Z軸は地球重力があるのでその分を補正 (1g = 16384 LSB)
+        _acclOffsets['z'] -= 16384
+        
+        if(self.isDebugEnable):
+            print("Finish Calibration")
+            
+        self.gyroOffsets = _gyroOffsets
+        self.acclOffsets = _acclOffsets
+
+class Cteam_MPU6050_Cal:
+    def init(self, _isDebugEnable:bool):
+        self.isDebugEnable = _isDebugEnable
         
         self.gyroOffsets = {'x': 0, 'y': 0, 'z': 0}
-        self.accelOffsets = {'x': 0, 'y': 0, 'z': 0}
-        
-        self.gyroOffsets = 0.0
-        self.accelOffsets = 0.0
+        self.acclOffsets = {'x': 0, 'y': 0, 'z': 0}
         
         self.acclX:float = 0.0
         self.acclY:float = 0.0
@@ -79,33 +149,14 @@ class Cteamt_MPU6050:
         self.rollSimpson.init()
         self.yawSimpson.init()
         
-    def _read2ByteData(self, _addr):
-        highByte = self.i2cBus.read_byte_data(MPU6050_ADDR, _addr)
-        lowByte = self.i2cBus.read_byte_data(MPU6050_ADDR, _addr + 1)
-        readData = ((highByte << 8) | lowByte)
-        if readData > 32768:
-            readData = readData - 65536
-        return readData
-    
-    def _readAcclAndGyro(self):
-        _readBytes = self.i2cBus.read_i2c_block_data(MPU6050_ADDR, ACCEL_XOUT_H, (0x43 - 0x3B) + 6)
-        _readData = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    def setCalibrationData(self, _acclOffset, _gyroOffset):
+        self.acclOffsets['x'] = _acclOffset[0]
+        self.acclOffsets['y'] = _acclOffset[1]
+        self.acclOffsets['z'] = _acclOffset[2]
         
-        _readData[0] = ((_readBytes[0] << 8) | _readBytes[1])
-        _readData[1] = ((_readBytes[2] << 8) | _readBytes[3])
-        _readData[2] = ((_readBytes[4] << 8) | _readBytes[5])
-        _readData[3] = ((_readBytes[0 + (0x43 - 0x3B)] << 8) | _readBytes[1 + (0x43 - 0x3B)])
-        _readData[4] = ((_readBytes[2 + (0x43 - 0x3B)] << 8) | _readBytes[3 + (0x43 - 0x3B)])
-        _readData[5] = ((_readBytes[4 + (0x43 - 0x3B)] << 8) | _readBytes[5 + (0x43 - 0x3B)])
-        
-        for _i in range(0, 6, 1):
-            if (_readData[_i] > 32768):
-                _readData[_i] = _readData[_i] - 65536
-        
-        return _readData
-    
-    def _readAcclAndGyro_ReadOnly(self): # return 14Bytes
-        return self.i2cBus.read_i2c_block_data(MPU6050_ADDR, ACCEL_XOUT_H, (0x43 - 0x3B) + 6)
+        self.gyroOffsets['x'] = _gyroOffset[0]
+        self.gyroOffsets['y'] = _gyroOffset[1]
+        self.gyroOffsets['z'] = _gyroOffset[2]
     
     def _readAcclAndGyro_CalculateOnly(self, _readBytes):
         _readData = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -122,52 +173,11 @@ class Cteamt_MPU6050:
                 _readData[_i] = _readData[_i] - 65536
         
         return _readData
-        
-        
-    def calibrate(self, _numberOfSamples=CALIBRATION_TIME):
-        _gyroOffsets = {'x': 0, 'y': 0, 'z': 0}
-        _accelOffsets = {'x': 0, 'y': 0, 'z': 0}
-        
-        if(self.isDebugEnable):
-            print("キャリブレーション中...")
-
-        for _ in range(_numberOfSamples):
-            # ジャイロデータの平均を計算
-            _gyroOffsets['x'] += self._read2ByteData(GYRO_XOUT_H)
-            _gyroOffsets['y'] += self._read2ByteData(GYRO_XOUT_H + 2)
-            _gyroOffsets['z'] += self._read2ByteData(GYRO_XOUT_H + 4)
-
-            # 加速度データの平均を計算
-            _accelOffsets['x'] += self._read2ByteData(ACCEL_XOUT_H)
-            _accelOffsets['y'] += self._read2ByteData(ACCEL_XOUT_H + 2)
-            _accelOffsets['z'] += self._read2ByteData(ACCEL_XOUT_H + 4)
-
-            time.sleep(0.001)  # サンプリングの間隔を調整
-
-        # 平均を取ってオフセット値を算出
-        _gyroOffsets['x'] /= _numberOfSamples
-        _gyroOffsets['y'] /= _numberOfSamples
-        _gyroOffsets['z'] /= _numberOfSamples
-
-        _accelOffsets['x'] /= _numberOfSamples
-        _accelOffsets['y'] /= _numberOfSamples
-        _accelOffsets['z'] /= _numberOfSamples
-
-        # Z軸は地球重力があるのでその分を補正 (1g = 16384 LSB)
-        _accelOffsets['z'] -= 16384
-        
-        if(self.isDebugEnable):
-            print("キャリブレーション完了")
-            
-        self.gyroOffsets = _gyroOffsets
-        self.accelOffsets = _accelOffsets
     
-    def getAccelAndGyro(self):
-        _readData = self._readAcclAndGyro()
-        
-        self.acclX = (_readData[0] - self.accelOffsets['x']) * 5.985504150390625E-4 # 9.80665 / 16384.0
-        self.acclY = (_readData[1] - self.accelOffsets['y']) * 5.985504150390625E-4
-        self.acclZ = (_readData[2] - self.accelOffsets['z']) * 5.985504150390625E-4
+    def getAccelAndGyro(self, _readData):
+        self.acclX = (_readData[0] - self.acclOffsets['x']) * 5.985504150390625E-4 # 9.80665 / 16384.0
+        self.acclY = (_readData[1] - self.acclOffsets['y']) * 5.985504150390625E-4
+        self.acclZ = (_readData[2] - self.acclOffsets['z']) * 5.985504150390625E-4
     
         self.pitchRate =    (_readData[3] - self.gyroOffsets['x']) / 131.0
         self.rollRate =     (_readData[4] - self.gyroOffsets['y']) / 131.0
