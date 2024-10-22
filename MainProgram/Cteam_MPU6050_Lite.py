@@ -59,9 +59,13 @@ class Cteamt_MPU6050:
         self.rollRate:float = 0.0
         self.yawRate:float = 0.0
         
-        self.pitchRateMem:float = [0.0, 0.0, 0.0]
-        self.rollRateMem:float = [0.0, 0.0, 0.0]
-        self.yawRateMem:float = [0.0, 0.0, 0.0]
+        self.pitchRateMem:float = 0.0
+        self.rollRateMem:float = 0.0
+        self.yawRateMem:float = 0.0
+        
+        self.pitchAccl:float = 0.0
+        self.rollAccl:float = 0.0
+        self.yawAccl:float = 0.0
         
         self.pitch:float = 0.0
         self.roll:float = 0.0
@@ -139,7 +143,6 @@ class Cteamt_MPU6050:
         self.accelOffsets = _accelOffsets
     
     def getAccelAndGyro(self):
-        
         _readData = self._read12ByteData(ACCEL_XOUT_H)
         
         self.acclX = (_readData[0] - self.accelOffsets['x']) * 5.985504150390625E-4 # 9.80665 / 16384.0
@@ -150,14 +153,24 @@ class Cteamt_MPU6050:
         self.rollRate =     (_readData[4] - self.gyroOffsets['y']) / 131.0
         self.yawRate =      (_readData[5] - self.gyroOffsets['z']) / 131.0
         
-    def getAngle(self, _pitchRate, _rollRate, _yawRate, _dt):
-        self.pitchSimpson.simpson(_pitchRate, _dt)
-        self.rollSimpson.simpson(_rollRate, _dt)
-        self.yawSimpson.simpson(_yawRate, _dt)
+    def getAngle(self, _dt):
+        self.pitchSimpson.simpson(self.pitchRate, _dt)
+        self.rollSimpson.simpson(self.rollRate, _dt)
+        self.yawSimpson.simpson(self.yawRate, _dt)
         
         self.pitch = self.pitchSimpson.ans
         self.roll = self.rollSimpson.ans
         self.yaw = self.yawSimpson.ans
+        
+    def getAngleAcceleration(self, _dt):
+        self.pitchAccl = (self.pitchRate - self.pitchRateMem) / _dt
+        self.rollAccl = (self.rollRate - self.rollRateMem) / _dt
+        self.yawAccl = (self.yawRate - self.yawRateMem) / _dt
+        
+        self.pitchRateMem = self.pitchRate
+        self.rollRateMem = self.rollRate
+        self.yawRate = self.yawRate
+        
 
 if __name__ == "__main__":
     # 初期化
