@@ -87,7 +87,7 @@ class Cteamt_MPU6050:
             readData = readData - 65536
         return readData
     
-    def _read12ByteData(self, _addr):
+    def _readAcclAndGyro(self, _addr):
         _readBytes = self.i2cBus.read_i2c_block_data(MPU6050_ADDR, _addr, (0x43 - 0x3B) + 6)
         _readData = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         
@@ -103,6 +103,26 @@ class Cteamt_MPU6050:
                 _readData[_i] = _readData[_i] - 65536
         
         return _readData
+    
+    def _readAcclAndGyro_ReadOnly(self, _addr): # return 14Bytes
+        return self.i2cBus.read_i2c_block_data(MPU6050_ADDR, _addr, (0x43 - 0x3B) + 6)
+    
+    def _readAcclAndGyro_CalculateOnly(self, _readBytes):
+        _readData = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        
+        _readData[0] = ((_readBytes[0] << 8) | _readBytes[1])
+        _readData[1] = ((_readBytes[2] << 8) | _readBytes[3])
+        _readData[2] = ((_readBytes[4] << 8) | _readBytes[5])
+        _readData[3] = ((_readBytes[0 + (0x43 - 0x3B)] << 8) | _readBytes[1 + (0x43 - 0x3B)])
+        _readData[4] = ((_readBytes[2 + (0x43 - 0x3B)] << 8) | _readBytes[3 + (0x43 - 0x3B)])
+        _readData[5] = ((_readBytes[4 + (0x43 - 0x3B)] << 8) | _readBytes[5 + (0x43 - 0x3B)])
+        
+        for _i in range(0, 6, 1):
+            if (_readData[_i] > 32768):
+                _readData[_i] = _readData[_i] - 65536
+        
+        return _readData
+        
         
     def calibrate(self, _numberOfSamples=CALIBRATION_TIME):
         _gyroOffsets = {'x': 0, 'y': 0, 'z': 0}
@@ -143,7 +163,7 @@ class Cteamt_MPU6050:
         self.accelOffsets = _accelOffsets
     
     def getAccelAndGyro(self):
-        _readData = self._read12ByteData(ACCEL_XOUT_H)
+        _readData = self._readAcclAndGyro(ACCEL_XOUT_H)
         
         self.acclX = (_readData[0] - self.accelOffsets['x']) * 5.985504150390625E-4 # 9.80665 / 16384.0
         self.acclY = (_readData[1] - self.accelOffsets['y']) * 5.985504150390625E-4
