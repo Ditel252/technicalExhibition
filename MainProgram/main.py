@@ -6,6 +6,11 @@ from multiprocessing import Value, Array, Process
 import time 
 import keyboard
 
+CMD_START_CALIBRATION   = 0x01
+CMD_START_SETUP_ESC     = 0x02
+CMD_START_MEASUREING    = 0x03
+CMD_END_PROGRAM         = 0x04
+
 # MPU6050
 mpuI2c = MPU6050.Cteam_MPU6050_I2c()
 mpuCal = MPU6050.Cteam_MPU6050_Cal()
@@ -148,7 +153,7 @@ def calPosture(endReadPosture, readDataOfMPU6050, accl, velocity, displacement, 
         angle[1] = mpuCal.roll
         angle[2] = mpuCal.yaw
         
-        # print("\raX:{:10.2f} aY:{:10.2f} aZ:{:10.2f} | RBT{:4d} | Cyoocle{:6.2f}".format(mpuCal.acclX, mpuCal.acclY, mpuCal.acclZ, readTimeBuffer.value, 1.0 / _1CycleTime), end="")
+        print("\raX:{:10.2f} aY:{:10.2f} aZ:{:10.2f} | RBT{:4d} | Cyoocle{:6.2f}".format(mpuCal.acclX, mpuCal.acclY, mpuCal.acclZ, readTimeBuffer.value, 1.0 / _1CycleTime), end="")
         # print("\rvX:{:10.2f} vY:{:10.2f} vZ:{:10.2f} | RBT{:4d} | Cycle{:6.2f}".format(mpuCal.velocityX, mpuCal.velocityY, mpuCal.velocityZ, readTimeBuffer.value, 1.0 / _1CycleTime), end="")
         # print("\rX:{:10.2f} Y:{:10.2f} Z:{:10.2f} | RBT{:4d} | Cycle{:6.2f}".format(mpuCal.displacementX, mpuCal.displacementY, mpuCal.displacementZ, readTimeBuffer.value, 1.0 / _1CycleTime), end="")
         # print("\rpR:{:10.2f} rR:{:10.2f} yR:{:10.2f} | RBT{:4d} | Cycle{:6.2f}".format(mpuCal.pitchRate, mpuCal.rollRate, mpuCal.yawRate, readTimeBuffer.value, 1.0 / _1CycleTime), end="")
@@ -165,32 +170,34 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     
     print("{:<20} | Serial Setup Finish".format("Main Program"))
     
-    # ===Waiting Command From Controller()
+    
+    # ===Waiting Command From Controller(from here)===
     print("{:<20} | Waiting For Start Calibration Command".format("Main Program"))
     while(True):
         if(controllerRx.getReadByte()):
-            if(controllerRx.readByte == 0x01):
+            if(controllerRx.readByte == CMD_START_CALIBRATION):
                 break
-        
         time.sleep(0.01)
     print("{:<20} | Get Start Calibration Command".format("Main Program"))
+    # ===Waiting Command From Controller(this far)===
+        
         
     isCalibrationStart.value = 1
     
     while (not wasCalibrationFinished.value):
         pass
     
-    print("{:<20} | Waiting For Setup ESC Command".format("Main Program"))
     
-    # Waiting Command From Controller
+    # ===Waiting Command From Controller(from here)===
+    print("{:<20} | Waiting For Setup ESC Command".format("Main Program"))
     while(True):
         if(controllerRx.getReadByte()):
-            if(controllerRx.readByte == 0x02):
+            if(controllerRx.readByte == CMD_START_SETUP_ESC):
                 break
-            
         time.sleep(0.01)
-    
     print("{:<20} | Get Start Setup ESC Command".format("Main Program"))
+    # ===Waiting Command From Controller(this far)===
+    
     
     _gpio = pigpio.pi()
     
@@ -212,20 +219,31 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     print("{:<20} | Set Max and Min Value to ESC End".format("Main Program"))
     
     
+    # ===Waiting Command From Controller(from here)===
     print("{:<20} | Waiting For Start Measure Command".format("Main Program"))
-    # Waiting Command From Controller
     while(True):
         if(controllerRx.getReadByte()):
-            if(controllerRx.readByte == 0x03):
+            if(controllerRx.readByte == CMD_START_MEASUREING):
                 break
-            
         time.sleep(0.01)
-    
     print("{:<20} | Get Start Start Measure Command".format("Main Program"))
+    # ===Waiting Command From Controller(this far)===
+    
     
     wasMeasureStarted.value = 1
     
     print("{:<20} | Order Measure Start".format("Main Program"))
+    
+    while(True):
+        # print("\rMain aX:{:6.2f} aY:{:6.2f} aZ:{:6.2f}".format(accl[0], accl[1], accl[2]), end="")
+        
+        if(controllerRx.getReadByte()):
+            if(controllerRx.readByte == CMD_END_PROGRAM):
+                break
+        # else:
+        #     print("Hello World!!")
+            
+            
     
     
     endReadPosture.value = 1
@@ -269,4 +287,4 @@ if __name__ == "__main__":
     # process_readPosture.join()
     process_readMPU6050.join()
     process_calPosture.join()
-    # process_mainProgram.join()
+    process_mainProgram.join()
