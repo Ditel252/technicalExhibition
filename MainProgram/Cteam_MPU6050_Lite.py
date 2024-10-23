@@ -108,7 +108,7 @@ class Cteam_MPU6050_I2c:
         _acclOffsets['z'] /= _numberOfSamples
 
         # Z軸は地球重力があるのでその分を補正 (1g = 16384 LSB)
-        _acclOffsets['z'] += 16384
+        _acclOffsets['z'] += -16384
         
         if(self.isDebugEnable):
             print("Finish Calibration")
@@ -199,6 +199,7 @@ class Cteam_MPU6050_Cal:
                 _readData[_i] = _readData[_i] - 65536
                 
         _readData[1] *= -1
+        _readData[2] *= -1
         
         return _readData
     
