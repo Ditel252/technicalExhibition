@@ -1,20 +1,32 @@
-import Cteam_MPU6050_Lite as mpu6050
+import Cteam_MPU6050_Lite as MPU6050
+import Cteam_BLDC as BLDC
+import Cteam_ControllerReciver as CERx
+import pigpio
 from multiprocessing import Value, Array, Process
 import time 
+import keyboard
 
 # MPU6050
-mpuI2c = mpu6050.Cteam_MPU6050_I2c()
-mpuCal = mpu6050.Cteam_MPU6050_Cal()
-READ_CYCLE = 400 # [Hz]
+mpuI2c = MPU6050.Cteam_MPU6050_I2c()
+mpuCal = MPU6050.Cteam_MPU6050_Cal()
 
-def readMPU6050(endReadPosture, readDataOfMPU6050, acclOffset, gyroOffset, wasCalibrationFinished, readTimeBuffer):
+esc = [BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC()]
+ESC_PWM_PIN:int = [17, 27, 22, 10, 9, 11, 0, 5]
+
+READ_CYCLE = 400 # [Hz]
+CALIBRATION_TIME = 1000
+
+def readMPU6050(endReadPosture, readDataOfMPU6050, acclOffset, gyroOffset, isCalibrationStart,wasCalibrationFinished, wasMeasureStarted, mesureTimeCount, readTimeBuffer):
     print("{:<20} | Read MPU6050 Start".format("Read MPU6050"))
     mpuI2c.init(True)
     
     wasCalibrationFinished.value = 0
     print("{:<20} | Calibration Start".format("Read MPU6050"))
     
-    mpuI2c.calibrate(1000)
+    while(not isCalibrationStart.value):
+        pass
+    
+    mpuI2c.calibrate(CALIBRATION_TIME)
     
     acclOffset[0] = mpuI2c.acclOffsets['x']
     acclOffset[1] = mpuI2c.acclOffsets['y']
@@ -28,10 +40,15 @@ def readMPU6050(endReadPosture, readDataOfMPU6050, acclOffset, gyroOffset, wasCa
     
     wasCalibrationFinished.value = 1
     
-    _lastReadTime:float = time.perf_counter()
-    _nowTime:float = time.perf_counter()
+    _lastReadTime:float = 0.0
+    _nowTime:float = 0.0
     
     _delayTimeCounter:int = 0
+    
+    while(not wasMeasureStarted.value):
+        pass
+    
+    print("{:<20} | Measure Start".format("Read MPU6050"))
     
     while(not endReadPosture.value):
         _reciveData = mpuI2c._readAcclAndGyro_ReadOnly()
@@ -48,112 +65,208 @@ def readMPU6050(endReadPosture, readDataOfMPU6050, acclOffset, gyroOffset, wasCa
             _delayTimeCounter += 1
         
         readTimeBuffer.value = _delayTimeCounter
-        _lastReadTime = _nowTime
+        
+        if(_delayTimeCounter < 10):
+            print("{:<20} | 1 Cycle Time Buffer is too short".format("Read MPU6050"))
+        
+        mesureTimeCount.value += 1
+        _lastReadTime = _nowTime        
         
     print("{:<20} | Read MPU6050 Finish".format("Read MPU6050"))
     
 
-def calPosture(endReadPosture, readDataOfMPU6050, accl, angleAccl, gyro, angle, acclOffset, gyroOffset, wasCalibrationFinished, readTimeBuffer):
-    print("{:<20} | Program Start".format("Read Prosture"))
+def calPosture(endReadPosture, readDataOfMPU6050, accl, velocity, displacement, angleAccl, angleRate, angle, acclOffset, gyroOffset, wasCalibrationFinished, wasMeasureStarted, mesureTimeCount, readTimeBuffer):
+    print("{:<20} | Program Start".format("Calculate Prosture"))
     
     mpuCal.init(True)
     
-    print("{:<20} | Wating For Calibration Finish".format("Read Prosture"))
+    print("{:<20} | Waiting For Calibration Finish".format("Calculate Prosture"))
     
     while(not wasCalibrationFinished.value):
         pass
     
-    print("{:<20} | Calibration Finished".format("Read Prosture"))
+    print("{:<20} | Calibration Finished".format("Calculate Prosture"))
     
     mpuCal.setCalibrationData(acclOffset, gyroOffset)
     
-    print("{:<20} | Calibration Set".format("Read Prosture"))
+    print("{:<20} | Calibration Set".format("Calculate Prosture"))
+    
+    _nowMesureTimeCount:int = mesureTimeCount.value
+    _lastMesureTimeCount:int = _nowMesureTimeCount
+    
+    print("{:<20} | Calibration Finished".format("Calculate Prosture"))
+    
+    print("{:<20} | Waiting For Start Measure".format("Calculate Prosture"))
+    while(not wasMeasureStarted.value):
+        pass
+    
+    # MPU6050 Measure Start
+    print("{:<20} | Measure Start".format("Calculate Prosture"))
+    
+    _lastReadTime:float = time.perf_counter()
         
     while (not endReadPosture.value):
-        mpuCal.getAccelAndGyro(mpuCal._readAcclAndGyro_CalculateOnly(readDataOfMPU6050))
+        _nowReadTime = time.perf_counter()
+        _1CycleTime = _nowReadTime - _lastReadTime
+        _lastReadTime = _nowReadTime
         
-        print("\raX:{:10.2f} aY:{:10.2f} aZ:{:10.2f} | aX:{:10.2f} aY:{:10.2f} aZ:{:10.2f} | RBT{:4d}".format(mpuCal.acclX, mpuCal.acclY, mpuCal.acclZ, mpuCal.pitchRate, mpuCal.rollRate, mpuCal.yawRate, readTimeBuffer.value), end="")
-                
-        # mpu.getAccelAndGyro()
-        # mpu.getAngle(1.0 / READ_CYCLE)
-        # mpu.getAngleAcceleration(1.0 / READ_CYCLE)
+        while(_nowMesureTimeCount <= _lastMesureTimeCount):
+            _nowMesureTimeCount = mesureTimeCount.value
         
-        # accl[0] = mpu.acclX
-        # accl[1] = mpu.acclY
-        # accl[2] = mpu.acclZ
-        
-        # angleAccl[0] = mpu.pitchAccl
-        # angleAccl[1] = mpu.rollAccl
-        # angleAccl[2] = mpu.yawAccl
-        
-        # gyro[0] = mpu.pitchRate
-        # gyro[1] = mpu.rollRate
-        # gyro[2] = mpu.yawRate
-        
-        # angle[0] = mpu.pitch
-        # angle[1] = mpu.roll
-        # angle[2] = mpu.yaw
-                
-        # nowTime = time.perf_counter()
-        # isProgramCycleOK = False
-
-        # while ((nowTime - lastReadTime) <= (1.0 / READ_CYCLE)):
-        #     isProgramCycleOK = True
+        if(_nowMesureTimeCount != (_lastMesureTimeCount + 1)):
+            print("\n{:<20} | Error : Attitude calculation process is out of sync.".format("Calculate Prosture"))
             
-        #     nowTime = time.perf_counter()
+        _lastMesureTimeCount = _nowMesureTimeCount
         
-        # if (isProgramCycleOK):
-        #     lastReadTime = nowTime
-        # else:
-        #     lastReadTime = nowTime
-        #     print("{:<20} | Error !! Cycle is too short!!".format("Read Prosture"))
+        mpuCal.getAcclAndGyro(mpuCal._readAcclAndGyro_CalculateOnly(readDataOfMPU6050)) # Get Acceleration and Angular-velocity
+        mpuCal.getVelocity(1.0 / READ_CYCLE)    # Get Velocity
+        mpuCal.getDisplacement(1.0 / READ_CYCLE)    # Get Displacement
+        mpuCal.getAngleAcceleration(1.0 / READ_CYCLE) # Get Angle Acceleration
+        mpuCal.getAngle(1.0 / READ_CYCLE)   # Get Angle
+        
+        accl[0] = mpuCal.acclX
+        accl[1] = mpuCal.acclY
+        accl[2] = mpuCal.acclZ
+        
+        velocity[0] = mpuCal.velocityX
+        velocity[1] = mpuCal.velocityY
+        velocity[2] = mpuCal.velocityZ
+        
+        displacement[0] = mpuCal.displacementX
+        displacement[1] = mpuCal.displacementY
+        displacement[2] = mpuCal.displacementZ
+        
+        angleAccl[0] = mpuCal.pitchAccl
+        angleAccl[1] = mpuCal.rollAccl
+        angleAccl[2] = mpuCal.yawAccl
+        
+        angleRate[0] = mpuCal.pitchRate
+        angleRate[1] = mpuCal.rollRate
+        angleRate[2] = mpuCal.yawRate
+        
+        angle[0] = mpuCal.pitch
+        angle[1] = mpuCal.roll
+        angle[2] = mpuCal.yaw
+        
+        # print("\raX:{:10.2f} aY:{:10.2f} aZ:{:10.2f} | RBT{:4d} | Cyoocle{:6.2f}".format(mpuCal.acclX, mpuCal.acclY, mpuCal.acclZ, readTimeBuffer.value, 1.0 / _1CycleTime), end="")
+        # print("\rvX:{:10.2f} vY:{:10.2f} vZ:{:10.2f} | RBT{:4d} | Cycle{:6.2f}".format(mpuCal.velocityX, mpuCal.velocityY, mpuCal.velocityZ, readTimeBuffer.value, 1.0 / _1CycleTime), end="")
+        # print("\rX:{:10.2f} Y:{:10.2f} Z:{:10.2f} | RBT{:4d} | Cycle{:6.2f}".format(mpuCal.displacementX, mpuCal.displacementY, mpuCal.displacementZ, readTimeBuffer.value, 1.0 / _1CycleTime), end="")
+        # print("\rpR:{:10.2f} rR:{:10.2f} yR:{:10.2f} | RBT{:4d} | Cycle{:6.2f}".format(mpuCal.pitchRate, mpuCal.rollRate, mpuCal.yawRate, readTimeBuffer.value, 1.0 / _1CycleTime), end="")
+        # print("\rpA:{:10.2f} rA:{:10.2f} yA:{:10.2f} | RBT{:4d} | Cycle{:6.2f}".format(mpuCal.pitchAccl, mpuCal.rollAccl, mpuCal.yawAccl, readTimeBuffer.value, 1.0 / _1CycleTime), end="")
+        # print("\rp:{:10.2f} r:{:10.2f} y:{:10.2f} | RBT{:4d} | Cycle{:6.2f}".format(mpuCal.pitch, mpuCal.roll, mpuCal.yaw, readTimeBuffer.value, 1.0 / _1CycleTime), end="")
         
     print("{:<20} | Program End".format("Read Prosture"))
         
-def mainProgram(endReadPosture, readDataOfMPU6050, accl, angleAccl, gyro, angle):    
-    print("{:<20} | Program Start".format("Main"))
+def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRate, angle, isCalibrationStart, wasCalibrationFinished, wasMeasureStarted, mesureTimeCount, readTimeBuffer):    
+    print("{:<20} | Program Start".format("Main Program"))
     
-    for i in range(1000):
-        # print(readDataOfMPU6050[0] << 8 | readDataOfMPU6050[1])
-        mpu._readAcclAndGyro_CalculateOnly(readDataOfMPU6050)
-        
-        print("ax:{:6.2f} ay:{:6.2f} az:{:6.2f} | pr:{:6.2f} rr:{:6.2f} yr:{:6.2f}".format(mpu.acclX, mpu.acclY, mpu.acclZ, mpu.pitchRate, mpu.rollRate, mpu.yawRate))
-        
-        # print("ax:{:6.2f} ay:{:6.2f} az:{:6.2f} | p:{:6.2f} r:{:6.2f} y:{:6.2f} | pR:{:6.2f} rR:{:6.2f} yR:{:6.2f} | pA:{:6.2f} rA:{:6.2f} yA:{:6.2f}".format( \
-        #     accl[0], accl[1], accl[2], angle[0], angle[1], angle[2], gyro[0], gyro[1], gyro[2], angleAccl[0], angleAccl[1], angleAccl[2]))
-        
-        time.sleep(0.1)
+    controllerRx = CERx.Cteam_ControllerReciver()
+    controllerRx.init('/dev/ttyACM0')
     
-    print("{:<20} | Program End".format("Main"))
+    print("{:<20} | Serial Setup Finish".format("Main Program"))
+    
+    # ===Waiting Command From Controller()
+    print("{:<20} | Waiting For Start Calibration Command".format("Main Program"))
+    while(True):
+        if(controllerRx.getReadByte()):
+            if(controllerRx.readByte == 0x01):
+                break
+        
+        time.sleep(0.01)
+    print("{:<20} | Get Start Calibration Command".format("Main Program"))
+        
+    isCalibrationStart.value = 1
+    
+    while (not wasCalibrationFinished.value):
+        pass
+    
+    print("{:<20} | Waiting For Setup ESC Command".format("Main Program"))
+    
+    # Waiting Command From Controller
+    while(True):
+        if(controllerRx.getReadByte()):
+            if(controllerRx.readByte == 0x02):
+                break
+            
+        time.sleep(0.01)
+    
+    print("{:<20} | Get Start Setup ESC Command".format("Main Program"))
+    
+    _gpio = pigpio.pi()
+    
+    for _escNum in range(0, 8, 1):
+        esc[_escNum].init(_gpio, ESC_PWM_PIN[_escNum], True)
+    
+    print("{:<20} | Set Max and Min Value to ESC Start".format("Main Program"))
+    
+    for _escNum in range(0, 8, 1):
+        esc[_escNum].setMaxValue()
+        time.sleep(0.2)
+        
+    time.sleep(2 - 0.2 * 8)
+
+    for _escNum in range(0, 8, 1):
+        esc[_escNum].setMinValue()
+        time.sleep(0.2)
+        
+    print("{:<20} | Set Max and Min Value to ESC End".format("Main Program"))
+    
+    
+    print("{:<20} | Waiting For Start Measure Command".format("Main Program"))
+    # Waiting Command From Controller
+    while(True):
+        if(controllerRx.getReadByte()):
+            if(controllerRx.readByte == 0x03):
+                break
+            
+        time.sleep(0.01)
+    
+    print("{:<20} | Get Start Start Measure Command".format("Main Program"))
+    
+    wasMeasureStarted.value = 1
+    
+    print("{:<20} | Order Measure Start".format("Main Program"))
+    
+    
     endReadPosture.value = 1
+    print("{:<20} | Program End".format("Main Program"))
 
 if __name__ == "__main__":
     endReadPosture = Value('H', 0)
     wasCalibrationFinished = Value('H', 0)
+    isCalibrationStart = Value('H', 0)
+    wasMeasureStarted = Value('H', 0)
     
     acclOffset = Array('f', 3)
     gyroOffset = Array('f', 3)
     readTimeBuffer = Value('i', 0)
+    mesureTimeCount = Value('i', 0)
     
     readDataOfMPU6050 = Array('I', 12)
     
     accl = Array('f', 3)
+    velocity = Array('f', 3)
+    displacement = Array('f', 3)
+    
     angleAccl = Array('f', 3)
-    gyro = Array('f', 3)
+    angleRate = Array('f', 3)
     angle = Array('f', 3)
     
-    process_readMPU6050 = Process(target=readMPU6050, args=[endReadPosture, readDataOfMPU6050, acclOffset, gyroOffset, wasCalibrationFinished, readTimeBuffer])
-    process_calPosture = Process(target=calPosture, args=[endReadPosture, readDataOfMPU6050, accl, angleAccl, gyro, angle, acclOffset, gyroOffset, wasCalibrationFinished, readTimeBuffer])
-    # process_mainProgram = Process(target=mainProgram, args=[endReadPosture, readDataOfMPU6050, accl, angleAccl, gyro, angle])
+    process_readMPU6050 = Process(target=readMPU6050, args=[endReadPosture, readDataOfMPU6050, acclOffset, gyroOffset, isCalibrationStart,wasCalibrationFinished, wasMeasureStarted, mesureTimeCount, readTimeBuffer])
+    process_calPosture = Process(target=calPosture, args=[endReadPosture, readDataOfMPU6050, accl, velocity, displacement, angleAccl, angleRate, angle, acclOffset, gyroOffset, wasCalibrationFinished, wasMeasureStarted, mesureTimeCount, readTimeBuffer])
+    process_mainProgram = Process(target=mainProgram, args=[endReadPosture, accl, velocity, displacement, angleAccl, angleRate, angle, isCalibrationStart, wasCalibrationFinished, wasMeasureStarted, mesureTimeCount, readTimeBuffer])
     
-    # process_readPosture.start()
+    # Main Program Start
+    process_mainProgram.start()
+    # Postrue Caluculate Start
+    process_calPosture.start()    
+    # MPU6050 Read Start
     process_readMPU6050.start()
-    process_calPosture.start()
-    # process_mainProgram.start()
+    
+    
+    
     
     # process_readPosture.join()
     process_readMPU6050.join()
     process_calPosture.join()
     # process_mainProgram.join()
-    
-    
