@@ -1,8 +1,10 @@
 import Cteam_MPU6050_Lite as MPU6050
 import Cteam_BLDC as BLDC
+import Cteam_ControllerReciver as CERx
 import pigpio
 from multiprocessing import Value, Array, Process
 import time 
+import keyboard
 
 # MPU6050
 mpuI2c = MPU6050.Cteam_MPU6050_I2c()
@@ -20,6 +22,9 @@ def readMPU6050(endReadPosture, readDataOfMPU6050, acclOffset, gyroOffset, isCal
     
     wasCalibrationFinished.value = 0
     print("{:<20} | Calibration Start".format("Read MPU6050"))
+    
+    while(not isCalibrationStart.value):
+        pass
     
     mpuI2c.calibrate(CALIBRATION_TIME)
     
@@ -75,7 +80,7 @@ def calPosture(endReadPosture, readDataOfMPU6050, accl, velocity, displacement, 
     
     mpuCal.init(True)
     
-    print("{:<20} | Wating For Calibration Finish".format("Calculate Prosture"))
+    print("{:<20} | Waiting For Calibration Finish".format("Calculate Prosture"))
     
     while(not wasCalibrationFinished.value):
         pass
@@ -89,17 +94,14 @@ def calPosture(endReadPosture, readDataOfMPU6050, accl, velocity, displacement, 
     _nowMesureTimeCount:int = mesureTimeCount.value
     _lastMesureTimeCount:int = _nowMesureTimeCount
     
-    print("{:<20} | Wating For Calibration Finish".format("Calculate Prosture"))
-    
-    while(not wasCalibrationFinished.value):
-        pass
-    
     print("{:<20} | Calibration Finished".format("Calculate Prosture"))
     
-    # MPU6050 Measure Start
-    wasMeasureStarted.value = 1
+    print("{:<20} | Waiting For Start Measure".format("Calculate Prosture"))
+    while(not wasMeasureStarted.value):
+        pass
     
-    print("{:<20} | Order Measure Start".format("Calculate Prosture"))
+    # MPU6050 Measure Start
+    print("{:<20} | Measure Start".format("Calculate Prosture"))
     
     _lastReadTime:float = time.perf_counter()
         
@@ -158,19 +160,42 @@ def calPosture(endReadPosture, readDataOfMPU6050, accl, velocity, displacement, 
 def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRate, angle, isCalibrationStart, wasCalibrationFinished, wasMeasureStarted, mesureTimeCount, readTimeBuffer):    
     print("{:<20} | Program Start".format("Main Program"))
     
-    input("{:<20} | $ Enter to Start Calibration : ".format("Main Program"))
+    controllerRx = CERx.Cteam_ControllerReciver()
+    controllerRx.init('/dev/ttyACM0')
     
+    print("{:<20} | Serial Setup Finish".format("Main Program"))
+    
+    # ===Waiting Command From Controller()
+    print("{:<20} | Waiting For Start Calibration Command".format("Main Program"))
+    while(True):
+        if(controllerRx.getReadByte()):
+            if(controllerRx.readByte == 0x01):
+                break
+        
+        time.sleep(0.01)
+    print("{:<20} | Get Start Calibration Command".format("Main Program"))
+        
     isCalibrationStart.value = 1
     
-    while (not isCalibrationStart.value):
+    while (not wasCalibrationFinished.value):
         pass
     
-    input("{:<20} | $ Enter to Start Setup ESC : ".format("Main Program"))
+    print("{:<20} | Waiting For Setup ESC Command".format("Main Program"))
+    
+    # Waiting Command From Controller
+    while(True):
+        if(controllerRx.getReadByte()):
+            if(controllerRx.readByte == 0x02):
+                break
+            
+        time.sleep(0.01)
+    
+    print("{:<20} | Get Start Setup ESC Command".format("Main Program"))
     
     _gpio = pigpio.pi()
     
     for _escNum in range(0, 8, 1):
-        esc[_escNum].init(_gpio, ESC_PWM_PIN[i], True)
+        esc[_escNum].init(_gpio, ESC_PWM_PIN[_escNum], True)
     
     print("{:<20} | Set Max and Min Value to ESC Start".format("Main Program"))
     
@@ -186,7 +211,21 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         
     print("{:<20} | Set Max and Min Value to ESC End".format("Main Program"))
     
-    input("{:<20} | $ Enter to Start Program : ".format("Main Program"))
+    
+    print("{:<20} | Waiting For Start Measure Command".format("Main Program"))
+    # Waiting Command From Controller
+    while(True):
+        if(controllerRx.getReadByte()):
+            if(controllerRx.readByte == 0x03):
+                break
+            
+        time.sleep(0.01)
+    
+    print("{:<20} | Get Start Start Measure Command".format("Main Program"))
+    
+    wasMeasureStarted.value = 1
+    
+    print("{:<20} | Order Measure Start".format("Main Program"))
     
     
     endReadPosture.value = 1
