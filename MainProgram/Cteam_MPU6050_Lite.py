@@ -7,7 +7,13 @@ MPU6050_ADDR = 0x68
 
 READ_CYCLE = 300 #[Hz] 470Hz Max
 
+REVERSE_ACCLX:int = 1
+REVERSE_ACCLY:int = -1
+REVERSE_ACCLZ:int = 1
+
 CALIBRATION_TIME = 50
+
+GRAVITY_ACCELERATION = 9.797429
 
 # レジスタ
 PWR_MGMT_1 = 0x6B
@@ -108,7 +114,7 @@ class Cteam_MPU6050_I2c:
         _acclOffsets['z'] /= _numberOfSamples
 
         # Z軸は地球重力があるのでその分を補正 (1g = 16384 LSB)
-        _acclOffsets['z'] += -16384
+        # _acclOffsets['z'] += -16384
         
         if(self.isDebugEnable):
             print("Finish Calibration")
@@ -187,8 +193,8 @@ class Cteam_MPU6050_Cal:
     def _readAcclAndGyro_CalculateOnly(self, _readBytes):
         _readData = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         
-        _readData[1] = ((_readBytes[0] << 8) | _readBytes[1])
-        _readData[0] = ((_readBytes[2] << 8) | _readBytes[3])
+        _readData[0] = ((_readBytes[0] << 8) | _readBytes[1])
+        _readData[1] = ((_readBytes[2] << 8) | _readBytes[3])
         _readData[2] = ((_readBytes[4] << 8) | _readBytes[5])
         _readData[3] = ((_readBytes[6] << 8) | _readBytes[7])
         _readData[4] = ((_readBytes[8] << 8) | _readBytes[9])
@@ -197,9 +203,6 @@ class Cteam_MPU6050_Cal:
         for _i in range(0, 6, 1):
             if (_readData[_i] > 32768):
                 _readData[_i] = _readData[_i] - 65536
-                
-        _readData[1] *= -1
-        _readData[2] *= -1
         
         return _readData
     
@@ -222,9 +225,9 @@ class Cteam_MPU6050_Cal:
         self.displacementZ = self.displacementZSimpson.ans
     
     def getAcclAndGyro(self, _readData):
-        self.acclX = (_readData[0] - self.acclOffsets['x']) * 5.985504150390625E-4 # 9.80665 / 16384.0
-        self.acclY = (_readData[1] - self.acclOffsets['y']) * 5.985504150390625E-4
-        self.acclZ = (_readData[2] - self.acclOffsets['z']) * 5.985504150390625E-4
+        self.acclX = (_readData[1] - self.acclOffsets['x']) * 5.985504150390625E-4 * REVERSE_ACCLX # 9.80665 / 16384.0
+        self.acclY = (_readData[0] - self.acclOffsets['y']) * 5.985504150390625E-4 * REVERSE_ACCLY
+        self.acclZ = (_readData[2] - self.acclOffsets['z']) * 5.985504150390625E-4 * REVERSE_ACCLZ - GRAVITY_ACCELERATION
     
         self.pitchRate =    (_readData[3] - self.gyroOffsets['x']) / 131.0
         self.rollRate =     (_readData[4] - self.gyroOffsets['y']) / 131.0
