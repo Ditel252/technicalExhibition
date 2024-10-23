@@ -11,6 +11,12 @@ CMD_START_SETUP_ESC     = 0x02
 CMD_START_MEASUREING    = 0x03
 CMD_END_PROGRAM         = 0x04
 
+PHASE_START_CALIBRATION = 1
+PHASE_START_SETUP_ESC   = 2
+PHASE_START_MEASUREING  = 3
+PHASE_END_PROGRAM       = 4
+
+
 SAFETY_STOPPER:bool = True
 
 # MPU6050
@@ -163,25 +169,69 @@ def calPosture(endReadPosture, readDataOfMPU6050, accl, velocity, displacement, 
         # print("\rp:{:10.2f} r:{:10.2f} y:{:10.2f} | RBT{:4d} | Cycle{:6.2f}".format(mpuCal.pitch, mpuCal.roll, mpuCal.yaw, readTimeBuffer.value, 1.0 / _1CycleTime), end="")
         
     print("{:<20} | Program End".format("Read Prosture"))
-        
-def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRate, angle, isCalibrationStart, wasCalibrationFinished, wasMeasureStarted, mesureTimeCount, readTimeBuffer):    
-    print("{:<20} | Program Start".format("Main Program"))
-    
+
+def safetyStopper(endReadPosture, permittedPhases):
     controllerRx = CERx.Cteam_ControllerReciver()
     controllerRx.init('/dev/ttyACM0')
     
-    print("{:<20} | Serial Setup Finish".format("Main Program"))
+    permittedPhases.value = 0
     
-    
-    # ===Waiting Command From Controller(from here)===
-    if(SAFETY_STOPPER):
-        print("{:<20} | Waiting For Start Calibration Command".format("Main Program"))
-        while(True):
+    if(SAFETY_STOPPER): # Calibration
+        print("{:<20} $ Waiting For Start Calibration Command".format("Main Program"))
+        while(not endReadPosture.value):
             if(controllerRx.getReadByte()):
                 if(controllerRx.readByte == CMD_START_CALIBRATION):
                     break
             time.sleep(0.01)
         print("{:<20} | Get Start Calibration Command".format("Main Program"))
+    
+    permittedPhases.value = PHASE_START_CALIBRATION
+    
+        
+    if(SAFETY_STOPPER): # ESC Setup
+        print("{:<20} $ Waiting For Setup ESC Command".format("Main Program"))
+        while(not endReadPosture.value):
+            if(controllerRx.getReadByte()):
+                if(controllerRx.readByte == CMD_START_SETUP_ESC):
+                    break
+            time.sleep(0.01)
+        print("{:<20} | Get Start Setup ESC Command".format("Main Program"))
+        
+    permittedPhases.value = PHASE_START_SETUP_ESC
+    
+        
+    if(SAFETY_STOPPER): # Start Measureing
+        print("{:<20} $ Waiting For Start Measure Command".format("Main Program"))
+        while(not endReadPosture.value):
+            if(controllerRx.getReadByte()):
+                if(controllerRx.readByte == CMD_START_MEASUREING):
+                    break
+            time.sleep(0.01)
+        print("{:<20} | Get Start Start Measure Command".format("Main Program"))
+
+    permittedPhases.value = PHASE_START_MEASUREING
+
+    
+    if(SAFETY_STOPPER): # Start Measureing
+        print("{:<20} $ Waiting For Start Measure Command".format("Main Program"))
+        while(not endReadPosture.value):
+            if(controllerRx.getReadByte()):
+                if(controllerRx.readByte == CMD_START_MEASUREING):
+                    break
+            time.sleep(0.01)
+        print("{:<20} | Get Start Start Measure Command".format("Main Program"))
+
+    permittedPhases.value = PHASE_END_PROGRAM
+        
+def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRate, angle, isCalibrationStart, wasCalibrationFinished, wasMeasureStarted, mesureTimeCount, readTimeBuffer, permittedPhases):    
+    print("{:<20} | Program Start".format("Main Program"))
+    
+    print("{:<20} | Serial Setup Finish".format("Main Program"))
+    
+    
+    # ===Waiting Command From Controller(from here)===
+    while(permittedPhases.value < PHASE_START_CALIBRATION):
+        pass
     # ===Waiting Command From Controller(this far)===
         
         
@@ -192,14 +242,8 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     
     
     # ===Waiting Command From Controller(from here)===
-    if(SAFETY_STOPPER):
-        print("{:<20} | Waiting For Setup ESC Command".format("Main Program"))
-        while(True):
-            if(controllerRx.getReadByte()):
-                if(controllerRx.readByte == CMD_START_SETUP_ESC):
-                    break
-            time.sleep(0.01)
-        print("{:<20} | Get Start Setup ESC Command".format("Main Program"))
+    while(permittedPhases.value < PHASE_START_SETUP_ESC):
+        pass
     # ===Waiting Command From Controller(this far)===
     
     
@@ -222,16 +266,9 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         
     print("{:<20} | Set Max and Min Value to ESC End".format("Main Program"))
     
-    
     # ===Waiting Command From Controller(from here)===
-    if(SAFETY_STOPPER):
-        print("{:<20} | Waiting For Start Measure Command".format("Main Program"))
-        while(True):
-            if(controllerRx.getReadByte()):
-                if(controllerRx.readByte == CMD_START_MEASUREING):
-                    break
-            time.sleep(0.01)
-        print("{:<20} | Get Start Start Measure Command".format("Main Program"))
+    while(permittedPhases.value < PHASE_START_MEASUREING):
+        pass
     # ===Waiting Command From Controller(this far)===
     
     
@@ -239,27 +276,10 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     
     print("{:<20} | Order Measure Start".format("Main Program"))
     
-    count = 0
-    
-    for _escNum in range(0, 8, 1):
-        esc[_escNum].setValue(300)
+    while(permittedPhases.value < PHASE_END_PROGRAM):
+        print("\rMain aX:{:6.2f} aY:{:6.2f} aZ:{:6.2f}".format(accl[0], accl[1], accl[2]), end="")
         
-    time.sleep(10)
-    
-    # while(True):
-    #     if(SAFETY_STOPPER):
-    #         if(controllerRx.getReadByte()):
-    #             if(controllerRx.readByte == CMD_END_PROGRAM):
-    #                 break
-    #     else:
-    #         print("\rMain aX:{:6.2f} aY:{:6.2f} aZ:{:6.2f}".format(accl[0], accl[1], accl[2]), end="")
-    #     # else:
-    #     #     print("Hello World!!")
-        
-    #     esc[0].setValue(count)
-        
-    #     count += 5
-    #     time.sleep(0.1)
+        time.sleep(0.1)
             
             
     
@@ -272,6 +292,7 @@ if __name__ == "__main__":
     wasCalibrationFinished = Value('H', 0)
     isCalibrationStart = Value('H', 0)
     wasMeasureStarted = Value('H', 0)
+    permittedPhases = Value('H', 0)
     
     acclOffset = Array('f', 3)
     gyroOffset = Array('f', 3)
@@ -290,8 +311,11 @@ if __name__ == "__main__":
     
     process_readMPU6050 = Process(target=readMPU6050, args=[endReadPosture, readDataOfMPU6050, acclOffset, gyroOffset, isCalibrationStart,wasCalibrationFinished, wasMeasureStarted, mesureTimeCount, readTimeBuffer])
     process_calPosture = Process(target=calPosture, args=[endReadPosture, readDataOfMPU6050, accl, velocity, displacement, angleAccl, angleRate, angle, acclOffset, gyroOffset, wasCalibrationFinished, wasMeasureStarted, mesureTimeCount, readTimeBuffer])
-    process_mainProgram = Process(target=mainProgram, args=[endReadPosture, accl, velocity, displacement, angleAccl, angleRate, angle, isCalibrationStart, wasCalibrationFinished, wasMeasureStarted, mesureTimeCount, readTimeBuffer])
+    process_safetyStopper = Process(target=safetyStopper, args=[endReadPosture, permittedPhases])
+    process_mainProgram = Process(target=mainProgram, args=[endReadPosture, accl, velocity, displacement, angleAccl, angleRate, angle, isCalibrationStart, wasCalibrationFinished, wasMeasureStarted, mesureTimeCount, readTimeBuffer, permittedPhases])
     
+    # Safety Stopper Start
+    process_safetyStopper.start()
     # Main Program Start
     process_mainProgram.start()
     # Postrue Caluculate Start
@@ -299,7 +323,7 @@ if __name__ == "__main__":
     # MPU6050 Read Start
     process_readMPU6050.start()
     
-    # process_readPosture.join()
+    process_safetyStopper.join()
     process_readMPU6050.join()
     process_calPosture.join()
     process_mainProgram.join()
