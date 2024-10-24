@@ -4,8 +4,7 @@ import Cteam_ControllerReciver as CERx
 import Cteam_PID as PID
 import pigpio
 from multiprocessing import Value, Array, Process
-import time 
-import keyboard
+import time
 
 CMD_START_CALIBRATION   = 0x01
 CMD_START_SETUP_ESC     = 0x02
@@ -27,7 +26,7 @@ mpuCal = MPU6050.Cteam_MPU6050_Cal()
 esc = [BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC()]
 ESC_PWM_PIN:int = [17, 27, 22, 10, 9, 11, 0, 5]
 
-READ_CYCLE = 350 # [Hz]
+READ_CYCLE = 400 # [Hz]
 CALIBRATION_TIME = 1000
 
 def readMPU6050(endReadPosture, readDataOfMPU6050, acclOffset, gyroOffset, isCalibrationStart,wasCalibrationFinished, wasMeasureStarted, mesureTimeCount, readTimeBuffer):
@@ -81,7 +80,10 @@ def readMPU6050(endReadPosture, readDataOfMPU6050, acclOffset, gyroOffset, isCal
         readTimeBuffer.value = _delayTimeCounter
         
         if(_delayTimeCounter < 10):
-            print("{:<20} | 1 Cycle Time Buffer is too short".format("Read MPU6050"))
+            if(_delayTimeCounter < 1):
+                print("{:<20} | Waring : 1 Cycle Time Buffer is too short".format("Read MPU6050"))
+            else:
+                print("{:<20} | Error : 1 Cycle Time Buffer is too short".format("Read MPU6050"))                
         
         mesureTimeCount.value += 1
         _lastReadTime = _nowTime        
@@ -330,6 +332,9 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     
     _lastReadTime:float = time.perf_counter()
     
+    for _escNum in range(0, 8, 1):
+        esc[_escNum].setValue(300)
+    
     while(permittedPhases.value < PHASE_END_PROGRAM):
         _nowReadTime = time.perf_counter()
         _1CycleTime = _nowReadTime - _lastReadTime
@@ -343,11 +348,9 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         print("\rMain aX:{:6.2f} aY:{:6.2f} aZ:{:6.2f}".format(accl[0], accl[1], accl[2]), end="")
         
         # Begin MainProgram While from here
-        
-        
-        
-        
     
+    for _escNum in range(0, 8, 1):
+        esc[_escNum].setMinValue()
     
     endReadPosture.value = 1
     print("{:<20} | Program End".format("Main Program"))
