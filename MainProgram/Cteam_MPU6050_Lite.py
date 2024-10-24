@@ -8,7 +8,7 @@ MPU6050_ADDR = 0x68
 READ_CYCLE = 300 #[Hz] 470Hz Max
 
 REVERSE_ACCLX:int = 1
-REVERSE_ACCLY:int = -1
+REVERSE_ACCLY:int = 1
 REVERSE_ACCLZ:int = 1
 
 CALIBRATION_TIME = 50
@@ -114,7 +114,7 @@ class Cteam_MPU6050_I2c:
         _acclOffsets['z'] /= _numberOfSamples
 
         # Z軸は地球重力があるのでその分を補正 (1g = 16384 LSB)
-        # _acclOffsets['z'] += -16384
+        _acclOffsets['z'] -= 16384
         
         if(self.isDebugEnable):
             print("Finish Calibration")
@@ -227,7 +227,7 @@ class Cteam_MPU6050_Cal:
     def getAcclAndGyro(self, _readData):
         self.acclX = (_readData[1] - self.acclOffsets['x']) * 5.985504150390625E-4 * REVERSE_ACCLX # 9.80665 / 16384.0
         self.acclY = (_readData[0] - self.acclOffsets['y']) * 5.985504150390625E-4 * REVERSE_ACCLY
-        self.acclZ = (_readData[2] - self.acclOffsets['z']) * 5.985504150390625E-4 * REVERSE_ACCLZ - GRAVITY_ACCELERATION
+        self.acclZ = (_readData[2] - self.acclOffsets['z']) * 5.985504150390625E-4 * REVERSE_ACCLZ
     
         self.pitchRate =    (_readData[3] - self.gyroOffsets['x']) / 131.0
         self.rollRate =     (_readData[4] - self.gyroOffsets['y']) / 131.0
