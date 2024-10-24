@@ -9,7 +9,9 @@ import time
 CMD_START_CALIBRATION   = 0x01
 CMD_START_SETUP_ESC     = 0x02
 CMD_START_MEASUREING    = 0x03
-CMD_END_PROGRAM         = 0x04
+CMD_SET_READY           = 0x04
+CMD_SET_START           = 0x05
+CMD_END_PROGRAM         = 0x06
 
 PHASE_START_CALIBRATION = 1
 PHASE_START_SETUP_ESC   = 2
@@ -29,7 +31,7 @@ mpuCal = MPU6050.Cteam_MPU6050_Cal()
 esc = [BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC()]
 ESC_PWM_PIN:int = [17, 27, 22, 10, 9, 11, 0, 5]
 
-READ_CYCLE = 400 # [Hz]
+READ_CYCLE = 300 # [Hz]
 CALIBRATION_TIME = 1000
 
 def readMPU6050(endReadPosture, readDataOfMPU6050, acclOffset, gyroOffset, isCalibrationStart,wasCalibrationFinished, wasMeasureStarted, mesureTimeCount, readTimeBuffer):
@@ -238,7 +240,7 @@ def safetyStopper(endReadPosture, permittedPhases, permitRequestPhases):
         print("{:<20} $ Waiting For Ready Command".format("Safety Stopper"))
         while(not endReadPosture.value):
             if(controllerRx.getReadByte()):
-                if(controllerRx.readByte == PAHSE_SET_READY):
+                if(controllerRx.readByte == CMD_SET_READY):
                     break
             time.sleep(0.01)
         print("{:<20} | Get Ready Command".format("Safety Stopper"))
@@ -253,7 +255,7 @@ def safetyStopper(endReadPosture, permittedPhases, permitRequestPhases):
         print("{:<20} $ Waiting For Start Command".format("Safety Stopper"))
         while(not endReadPosture.value):
             if(controllerRx.getReadByte()):
-                if(controllerRx.readByte == PAHSE_SET_START):
+                if(controllerRx.readByte == CMD_SET_START):
                     break
             time.sleep(0.01)
         print("{:<20} | Get Start Start Command".format("Safety Stopper"))
@@ -293,7 +295,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         PID_Gyro[_gyroNum].K_P = 1
         PID_Gyro[_gyroNum].K_D = 1
         
-        PID_Gyro.init()
+        PID_Gyro[_gyroNum].init()
     
     
     PID_Accl = PID.Cteam_PID()
@@ -390,31 +392,46 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         _escSpeedSum:float = [BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED]
         # Begin MainProgram While from here
         
-        for _gyroNum in range(0, 2, 1):
-            PID_Gyro[_gyroNum].PID()
+        PID_Gyro[1].PID(0, angle[1], angleRate[1])
+        PID_Gyro[1].PID(0, angle[1], angleRate[1])
+        PID_Gyro[1].PID(0, angle[1], angleRate[1])
+        PID_Gyro[1].PID(0, angle[1], angleRate[1])
+        PID_Gyro[1].PID(0, angle[1], angleRate[1])
+        PID_Gyro[1].PID(0, angle[1], angleRate[1])
+        PID_Gyro[1].PID(0, angle[1], angleRate[1])
+        PID_Gyro[1].PID(0, angle[1], angleRate[1])
+    
+        PID_Gyro[0].PID(0, angle[0], angleRate[0])
+        PID_Gyro[0].PID(0, angle[0], angleRate[0])
+        PID_Gyro[0].PID(0, angle[0], angleRate[0])
+        PID_Gyro[0].PID(0, angle[0], angleRate[0])
+        PID_Gyro[0].PID(0, angle[0], angleRate[0])
+        PID_Gyro[0].PID(0, angle[0], angleRate[0])
+        PID_Gyro[0].PID(0, angle[0], angleRate[0])
+        PID_Gyro[0].PID(0, angle[0], angleRate[0])
+                
+        _escSpeedSum[0] += 2 * PID_Gyro[1].ans
+        _escSpeedSum[1] += 1 * PID_Gyro[1].ans
+        _escSpeedSum[2] += 0 * PID_Gyro[1].ans
+        _escSpeedSum[3] += -1 * PID_Gyro[1].ans
+        _escSpeedSum[4] += -2 * PID_Gyro[1].ans
+        _escSpeedSum[5] += -1 * PID_Gyro[1].ans
+        _escSpeedSum[6] += 0 * PID_Gyro[1].ans
+        _escSpeedSum[7] += 1 * PID_Gyro[1].ans
         
-        _escSpeedSum[0] += 2 * PID_Gyro[1].PID(0, angleRate[1], 0)
-        _escSpeedSum[1] += 1 * PID_Gyro[1].PID(0, angleRate[1], 0)
-        _escSpeedSum[2] += 0 * PID_Gyro[1].PID(0, angleRate[1], 0)
-        _escSpeedSum[3] += -1 * PID_Gyro[1].PID(0, angleRate[1], 0)
-        _escSpeedSum[4] += -2 * PID_Gyro[1].PID(0, angleRate[1], 0)
-        _escSpeedSum[5] += -1 * PID_Gyro[1].PID(0, angleRate[1], 0)
-        _escSpeedSum[6] += 0 * PID_Gyro[1].PID(0, angleRate[1], 0)
-        _escSpeedSum[7] += 1 * PID_Gyro[1].PID(0, angleRate[1], 0)
-        
-        _escSpeedSum[0] += 0 * PID_Gyro[0].PID(0, angleRate[0], 0)
-        _escSpeedSum[1] += -1 * PID_Gyro[0].PID(0, angleRate[0], 0)
-        _escSpeedSum[2] += -2 * PID_Gyro[0].PID(0, angleRate[0], 0)
-        _escSpeedSum[3] += -1 * PID_Gyro[0].PID(0, angleRate[0], 0)
-        _escSpeedSum[4] += 0 * PID_Gyro[0].PID(0, angleRate[0], 0)
-        _escSpeedSum[5] += 1 * PID_Gyro[0].PID(0, angleRate[0], 0)
-        _escSpeedSum[6] += 2 * PID_Gyro[0].PID(0, angleRate[0], 0)
-        _escSpeedSum[7] += 1 * PID_Gyro[0].PID(0, angleRate[0], 0)
+        _escSpeedSum[0] += 0 * PID_Gyro[0].ans
+        _escSpeedSum[1] += -1 * PID_Gyro[0].ans
+        _escSpeedSum[2] += -2 * PID_Gyro[0].ans
+        _escSpeedSum[3] += -1 * PID_Gyro[0].ans
+        _escSpeedSum[4] += 0 * PID_Gyro[0].ans
+        _escSpeedSum[5] += 1 * PID_Gyro[0].ans
+        _escSpeedSum[6] += 2 * PID_Gyro[0].ans
+        _escSpeedSum[7] += 1 * PID_Gyro[0].ans
         
         for _escNum in range(0, 8, 1):
             esc[_escNum].setValue(int(_escSpeedSum[_escNum]))
             
-        print("{:3d} {:3d} {:3d} {:3d} | {:3d} {:3d} {:3d} {:3d}", format(esc[0], esc[1], esc[2], esc[3], esc[4], esc[5], esc[6], esc[7]))
+        print("\r{:3d} {:3d} {:3d} {:3d} | {:3d} {:3d} {:3d} {:3d}".format(int(_escSpeedSum[0]), int(_escSpeedSum[1]), int(_escSpeedSum[2]), int(_escSpeedSum[3]), int(_escSpeedSum[4]), int(_escSpeedSum[5]), int(_escSpeedSum[6]), int(_escSpeedSum[7])), end="")
         
     
     for _escNum in range(0, 8, 1):
