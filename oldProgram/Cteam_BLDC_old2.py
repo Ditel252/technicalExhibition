@@ -1,28 +1,27 @@
 # 必要なライブラリをインポート
 import time
 import sys
-from gpiozero import PWMOutputDevice
+import pigpio
 
 # 定数定義
-MAX_SIGNAL = 2000  # 最大パルス幅
-MIN_SIGNAL = 1000  # 最小パルス幅
+MAX_SIGNAL = 2000  # 最大パルス幅 [us]
+MIN_SIGNAL = 1000  # 最小パルス幅 [us]
+PWM_MAX = 40000 # PWMの幅
 
-class Cteam_BLDC:
-    def _toDutyCycle(self, _value:int):
-        self.value = _value
-        return self.value / 10000.0
-        
+class Cteam_BLDC:        
     def setMaxValue(self):
-        self.escDevice.value = self._toDutyCycle(MAX_SIGNAL)
+        self.gpio.set_PWM_dutycycle(self.pwmPin, int((MAX_SIGNAL / 20000.0) * PWM_MAX))
         
     def setMinValue(self):
-        self.escDevice.value = self._toDutyCycle(MIN_SIGNAL)        
+        self.gpio.set_PWM_dutycycle(self.pwmPin, int((MIN_SIGNAL / 20000.0) * PWM_MAX))
     
-    def init(self, _pin:int, _debug:bool):
+    def init(self, _gpio,_pin:int, _debug:bool):
+        self.gpio = _gpio
         self.pwmPin:int = _pin
         self.isDebugEnable:bool = _debug
         
-        self.escDevice = PWMOutputDevice(self.pwmPin, frequency=100)
+        self.gpio.set_PWM_range(self.pwmPin, 40000)
+        self.gpio.set_PWM_frequency(self.pwmPin, 50)
         self.value:int = MIN_SIGNAL
         
     def setValue(self, _value:int):
@@ -37,7 +36,7 @@ class Cteam_BLDC:
                 if(self.isDebugEnable):
                     print("Changing ESC(Pin {:d})".format(self.pwmPin))
                 
-                self.escDevice.value = self._toDutyCycle(self.value)
+                self.gpio.set_PWM_dutycycle(self.pwmPin, int((self.value / 20000.0) * PWM_MAX))
             else:
                 if(self.isDebugEnable):
                     print("Invalid value for ESC(Pin {:d}). Value must be between {:d} and {:d}.".format(self.pwmPin, MIN_SIGNAL, MAX_SIGNAL))
@@ -45,21 +44,26 @@ class Cteam_BLDC:
     def BLDC_stop(self):
         self.value = MIN_SIGNAL
         
-        self.escDevice.value = self._toDutyCycle(self.value)
+        self.gpio.set_PWM_dutycycle(self.pwmPin, int((self.value / 20000.0) * PWM_MAX))
         
         if(self.isDebugEnable):
             print("Stop the motor of ESC(Pin {:d}).".format(self.pwmPin))
             
-    def escOff(self):
-        self.BLDC_stop()
+    def BLDC_off(self):
+        self.value = 0
         
-        self.escDevice.off()
+        self.gpio.set_PWM_dutycycle(self.pwmPin, int((self.value / 20000.0) * PWM_MAX))
+        
+        if(self.isDebugEnable):
+            print("Off the motor of ESC(Pin {:d}).".format(self.pwmPin))
 
         
 motor = Cteam_BLDC()
 
 if __name__ == "__main__":
-    motor.init(17, True)
+    gpio = pigpio.pi()
+    
+    motor.init(gpio, 17, True)
     
     motor.setMaxValue()
     time.sleep(2)
@@ -77,9 +81,10 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("program stop")
     
-    finally:
-        motor.escOff()
-        
+    finally:        
         print("esc off")
+        
+    motor.BLDC_off()
+    gpio.stop()
     
     

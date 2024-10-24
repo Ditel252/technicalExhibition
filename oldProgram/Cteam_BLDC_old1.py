@@ -4,13 +4,13 @@ import sys
 from gpiozero import PWMOutputDevice
 
 # 定数定義
-MAX_SIGNAL = 2000  # 最大パルス幅 [us]
-MIN_SIGNAL = 1000  # 最小パルス幅 [us]
+MAX_SIGNAL = 2000  # 最大パルス幅
+MIN_SIGNAL = 1000  # 最小パルス幅
 
 class Cteam_BLDC:
     def _toDutyCycle(self, _value:int):
         self.value = _value
-        return self.value / 20000.0
+        return self.value / 10000.0
         
     def setMaxValue(self):
         self.escDevice.value = self._toDutyCycle(MAX_SIGNAL)
@@ -22,7 +22,7 @@ class Cteam_BLDC:
         self.pwmPin:int = _pin
         self.isDebugEnable:bool = _debug
         
-        self.escDevice = PWMOutputDevice(self.pwmPin, frequency=50)
+        self.escDevice = PWMOutputDevice(self.pwmPin, frequency=100)
         self.value:int = MIN_SIGNAL
         
     def setValue(self, _value:int):
@@ -31,8 +31,7 @@ class Cteam_BLDC:
             self.BLDC_stop()
         else:            
             # 新たなパルス幅が有効範囲内にあるか確認
-            # if MIN_SIGNAL <= (int(_value) + MIN_SIGNAL) <= MAX_SIGNAL:
-            if True:
+            if MIN_SIGNAL <= (int(_value) + MIN_SIGNAL) <= MAX_SIGNAL:
                 self.value = int(_value) + MIN_SIGNAL
                 
                 if(self.isDebugEnable):

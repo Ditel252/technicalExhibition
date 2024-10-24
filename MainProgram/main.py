@@ -2,7 +2,6 @@ import Cteam_MPU6050_Lite as MPU6050
 import Cteam_BLDC as BLDC
 import Cteam_ControllerReciver as CERx
 import Cteam_PID as PID
-import pigpio
 from multiprocessing import Value, Array, Process
 import time
 
@@ -296,11 +295,8 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         pass
     # ===Waiting Command From Controller(this far)===
     
-    
-    _gpio = pigpio.pi()
-    
     for _escNum in range(0, 8, 1):
-        esc[_escNum].init(_gpio, ESC_PWM_PIN[_escNum], True)
+        esc[_escNum].init(ESC_PWM_PIN[_escNum], True)
     
     print("{:<20} | Set Max and Min Value to ESC Start".format("Main Program"))
     
