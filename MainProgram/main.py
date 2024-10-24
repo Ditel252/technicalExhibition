@@ -20,7 +20,7 @@ PAHSE_SET_READY         = 4
 PAHSE_SET_START         = 5
 PHASE_END_PROGRAM       = 6
 
-BASE_BLDC_SPEED = 250
+BASE_BLDC_SPEED = 275
 
 SAFETY_STOPPER:bool = True
 
@@ -378,7 +378,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     
     
     for _escNum in range(0, 8, 1):
-        esc[_escNum].setValue(250)
+        esc[_escNum].setValue(230)
     
     
     # ===Waiting Command From Controller(from here)===
@@ -429,9 +429,13 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         _escSpeedSum[7] += 1 * PID_Gyro[0].ans
         
         for _escNum in range(0, 8, 1):
+            if(_escSpeedSum[_escNum] > 350):
+                _escSpeedSum[_escNum] = 350
+        
+        for _escNum in range(0, 8, 1):
             esc[_escNum].setValue(int(_escSpeedSum[_escNum]))
             
-        print("\r{:3d} {:3d} {:3d} {:3d} | {:3d} {:3d} {:3d} {:3d}".format(int(_escSpeedSum[0]), int(_escSpeedSum[1]), int(_escSpeedSum[2]), int(_escSpeedSum[3]), int(_escSpeedSum[4]), int(_escSpeedSum[5]), int(_escSpeedSum[6]), int(_escSpeedSum[7])), end="")
+        # print("\r{:3d} {:3d} {:3d} {:3d} | {:3d} {:3d} {:3d} {:3d}".format(int(_escSpeedSum[0]), int(_escSpeedSum[1]), int(_escSpeedSum[2]), int(_escSpeedSum[3]), int(_escSpeedSum[4]), int(_escSpeedSum[5]), int(_escSpeedSum[6]), int(_escSpeedSum[7])), end="")
         
     
     for _escNum in range(0, 8, 1):
