@@ -14,8 +14,11 @@ CMD_END_PROGRAM         = 0x04
 PHASE_START_CALIBRATION = 1
 PHASE_START_SETUP_ESC   = 2
 PHASE_START_MEASUREING  = 3
-PHASE_END_PROGRAM       = 4
+PAHSE_SET_READY         = 4
+PAHSE_SET_START         = 5
+PHASE_END_PROGRAM       = 6
 
+BASE_BLDC_SPEED = 250
 
 SAFETY_STOPPER:bool = True
 
@@ -26,7 +29,7 @@ mpuCal = MPU6050.Cteam_MPU6050_Cal()
 esc = [BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC()]
 ESC_PWM_PIN:int = [17, 27, 22, 10, 9, 11, 0, 5]
 
-READ_CYCLE = 200 # [Hz]
+READ_CYCLE = 400 # [Hz]
 CALIBRATION_TIME = 1000
 
 def readMPU6050(endReadPosture, readDataOfMPU6050, acclOffset, gyroOffset, isCalibrationStart,wasCalibrationFinished, wasMeasureStarted, mesureTimeCount, readTimeBuffer):
@@ -229,6 +232,36 @@ def safetyStopper(endReadPosture, permittedPhases, permitRequestPhases):
 
     
     if(SAFETY_STOPPER): # Start Measureing
+        while(permitRequestPhases.value < PAHSE_SET_READY):
+            pass
+        
+        print("{:<20} $ Waiting For Ready Command".format("Safety Stopper"))
+        while(not endReadPosture.value):
+            if(controllerRx.getReadByte()):
+                if(controllerRx.readByte == PAHSE_SET_READY):
+                    break
+            time.sleep(0.01)
+        print("{:<20} | Get Ready Command".format("Safety Stopper"))
+
+    permittedPhases.value = PAHSE_SET_READY
+
+    
+    if(SAFETY_STOPPER): # Start Measureing
+        while(permitRequestPhases.value < PAHSE_SET_START):
+            pass
+        
+        print("{:<20} $ Waiting For Start Command".format("Safety Stopper"))
+        while(not endReadPosture.value):
+            if(controllerRx.getReadByte()):
+                if(controllerRx.readByte == PAHSE_SET_START):
+                    break
+            time.sleep(0.01)
+        print("{:<20} | Get Start Start Command".format("Safety Stopper"))
+
+    permittedPhases.value = PAHSE_SET_START
+
+    
+    if(SAFETY_STOPPER): # Start Measureing
         while(permitRequestPhases.value < PHASE_END_PROGRAM):
             pass
         
@@ -249,17 +282,18 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     _lastMesureTimeCount:int = _nowMesureTimeCount
     
     # ====PID Setting(from here)====
-    PID_Gyro = PID.Cteam_PID()
+    PID_Gyro = [PID.Cteam_PID(), PID.Cteam_PID(), PID.Cteam_PID()]
     
-    PID_Gyro.enableKi = 1
-    PID_Gyro.enableKp = 1
-    PID_Gyro.enableKd = 1
-    
-    PID_Gyro.K_I = 1
-    PID_Gyro.K_P = 1
-    PID_Gyro.K_D = 1
-    
-    PID_Gyro.init()
+    for _gyroNum in range(0, 3, 1):
+        PID_Gyro[_gyroNum].enableKi = 0
+        PID_Gyro[_gyroNum].enableKp = 1
+        PID_Gyro[_gyroNum].enableKd = 1
+        
+        PID_Gyro[_gyroNum].K_I = 0
+        PID_Gyro[_gyroNum].K_P = 1
+        PID_Gyro[_gyroNum].K_D = 1
+        
+        PID_Gyro.init()
     
     
     PID_Accl = PID.Cteam_PID()
@@ -330,24 +364,58 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     
     permitRequestPhases.value = PHASE_END_PROGRAM
     
-    _lastReadTime:float = time.perf_counter()
-    
     for _escNum in range(0, 8, 1):
         esc[_escNum].setValue(300)
     
+    # ===Waiting Command From Controller(from here)===
+    permitRequestPhases.value = PAHSE_SET_READY
+    
+    while(permittedPhases.value < PAHSE_SET_READY):
+        pass
+    # ===Waiting Command From Controller(this far)===
+    
+    
+    for _escNum in range(0, 8, 1):
+        esc[_escNum].setValue(250)
+    
+    
+    # ===Waiting Command From Controller(from here)===
+    permitRequestPhases.value = PAHSE_SET_START
+    
+    while(permittedPhases.value < PAHSE_SET_START):
+        pass
+    # ===Waiting Command From Controller(this far)===
+    
     while(permittedPhases.value < PHASE_END_PROGRAM):
-        _nowReadTime = time.perf_counter()
-        _1CycleTime = _nowReadTime - _lastReadTime
-        _lastReadTime = _nowReadTime
-        
-        while(_nowMesureTimeCount <= _lastMesureTimeCount):
-            _nowMesureTimeCount = mesureTimeCount.value
-        
-        if(_nowMesureTimeCount != (_lastMesureTimeCount + 1)):
-            print("\n{:<20} | Error : Attitude calculation process is out of sync.".format("Main Program"))
-        print("\rMain aX:{:6.2f} aY:{:6.2f} aZ:{:6.2f}".format(accl[0], accl[1], accl[2]), end="")
-        
+        _escSpeedSum:float = [BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED]
         # Begin MainProgram While from here
+        
+        for _gyroNum in range(0, 2, 1):
+            PID_Gyro[_gyroNum].PID()
+        
+        _escSpeedSum[0] += 2 * PID_Gyro[1].PID(0, angleRate[1], 0)
+        _escSpeedSum[1] += 1 * PID_Gyro[1].PID(0, angleRate[1], 0)
+        _escSpeedSum[2] += 0 * PID_Gyro[1].PID(0, angleRate[1], 0)
+        _escSpeedSum[3] += -1 * PID_Gyro[1].PID(0, angleRate[1], 0)
+        _escSpeedSum[4] += -2 * PID_Gyro[1].PID(0, angleRate[1], 0)
+        _escSpeedSum[5] += -1 * PID_Gyro[1].PID(0, angleRate[1], 0)
+        _escSpeedSum[6] += 0 * PID_Gyro[1].PID(0, angleRate[1], 0)
+        _escSpeedSum[7] += 1 * PID_Gyro[1].PID(0, angleRate[1], 0)
+        
+        _escSpeedSum[0] += 0 * PID_Gyro[0].PID(0, angleRate[0], 0)
+        _escSpeedSum[1] += -1 * PID_Gyro[0].PID(0, angleRate[0], 0)
+        _escSpeedSum[2] += -2 * PID_Gyro[0].PID(0, angleRate[0], 0)
+        _escSpeedSum[3] += -1 * PID_Gyro[0].PID(0, angleRate[0], 0)
+        _escSpeedSum[4] += 0 * PID_Gyro[0].PID(0, angleRate[0], 0)
+        _escSpeedSum[5] += 1 * PID_Gyro[0].PID(0, angleRate[0], 0)
+        _escSpeedSum[6] += 2 * PID_Gyro[0].PID(0, angleRate[0], 0)
+        _escSpeedSum[7] += 1 * PID_Gyro[0].PID(0, angleRate[0], 0)
+        
+        for _escNum in range(0, 8, 1):
+            esc[_escNum].setValue(int(_escSpeedSum[_escNum]))
+            
+        print("{:3d} {:3d} {:3d} {:3d} | {:3d} {:3d} {:3d} {:3d}", format(esc[0], esc[1], esc[2], esc[3], esc[4], esc[5], esc[6], esc[7]))
+        
     
     for _escNum in range(0, 8, 1):
         esc[_escNum].BLDC_off()

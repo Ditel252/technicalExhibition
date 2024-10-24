@@ -11,6 +11,10 @@ REVERSE_ACCLX:int = 1
 REVERSE_ACCLY:int = 1
 REVERSE_ACCLZ:int = 1
 
+REVERSE_PITCH:int = 1
+REVERSE_ROLL:int = -1
+REVERSE_YAW:int = 1
+
 CALIBRATION_TIME = 50
 
 GRAVITY_ACCELERATION = 9.797429
@@ -93,8 +97,8 @@ class Cteam_MPU6050_I2c:
 
         for _ in range(_numberOfSamples):
             # ジャイロデータの平均を計算
-            _gyroOffsets['y'] += self._read2ByteData(GYRO_XOUT_H)
-            _gyroOffsets['x'] += self._read2ByteData(GYRO_XOUT_H + 2)
+            _gyroOffsets['x'] += self._read2ByteData(GYRO_XOUT_H)
+            _gyroOffsets['y'] += self._read2ByteData(GYRO_XOUT_H + 2)
             _gyroOffsets['z'] += self._read2ByteData(GYRO_XOUT_H + 4)
 
             # 加速度データの平均を計算
@@ -182,12 +186,12 @@ class Cteam_MPU6050_Cal:
         self.yawSimpson.init()
         
     def setCalibrationData(self, _acclOffset, _gyroOffset):
-        self.acclOffsets['x'] = _acclOffset[0]
-        self.acclOffsets['y'] = _acclOffset[1]
+        self.acclOffsets['y'] = _acclOffset[0]
+        self.acclOffsets['x'] = _acclOffset[1]
         self.acclOffsets['z'] = _acclOffset[2]
         
-        self.gyroOffsets['x'] = _gyroOffset[0]
-        self.gyroOffsets['y'] = _gyroOffset[1]
+        self.gyroOffsets['y'] = _gyroOffset[0]
+        self.gyroOffsets['x'] = _gyroOffset[1]
         self.gyroOffsets['z'] = _gyroOffset[2]
     
     def _readAcclAndGyro_CalculateOnly(self, _readBytes):
@@ -229,9 +233,9 @@ class Cteam_MPU6050_Cal:
         self.acclY = (_readData[0] - self.acclOffsets['y']) * 5.985504150390625E-4 * REVERSE_ACCLY
         self.acclZ = (_readData[2] - self.acclOffsets['z']) * 5.985504150390625E-4 * REVERSE_ACCLZ
     
-        self.pitchRate =    (_readData[3] - self.gyroOffsets['x']) / 131.0
-        self.rollRate =     (_readData[4] - self.gyroOffsets['y']) / 131.0
-        self.yawRate =      (_readData[5] - self.gyroOffsets['z']) / 131.0
+        self.pitchRate =    (_readData[4] - self.gyroOffsets['x']) / 131.0 * REVERSE_PITCH
+        self.rollRate =     (_readData[3] - self.gyroOffsets['y']) / 131.0 * REVERSE_ROLL
+        self.yawRate =      (_readData[5] - self.gyroOffsets['z']) / 131.0 * REVERSE_YAW
         
     def getAngle(self, _dt):
         self.pitchSimpson.simpson(self.pitchRate, _dt)
