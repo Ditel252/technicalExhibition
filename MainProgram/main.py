@@ -26,7 +26,7 @@ mpuCal = MPU6050.Cteam_MPU6050_Cal()
 esc = [BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC()]
 ESC_PWM_PIN:int = [17, 27, 22, 10, 9, 11, 0, 5]
 
-READ_CYCLE = 400 # [Hz]
+READ_CYCLE = 200 # [Hz]
 CALIBRATION_TIME = 1000
 
 def readMPU6050(endReadPosture, readDataOfMPU6050, acclOffset, gyroOffset, isCalibrationStart,wasCalibrationFinished, wasMeasureStarted, mesureTimeCount, readTimeBuffer):
@@ -350,7 +350,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         # Begin MainProgram While from here
     
     for _escNum in range(0, 8, 1):
-        esc[_escNum].setMinValue()
+        esc[_escNum].BLDC_off()
     
     endReadPosture.value = 1
     print("{:<20} | Program End".format("Main Program"))
