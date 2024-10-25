@@ -1,6 +1,7 @@
 import Cteam_MPU6050_Lite as MPU6050
 import Cteam_BLDC as BLDC
 import Cteam_ControllerReciver as CERx
+import Cteam_HCSR04 as HCSR04
 import Cteam_PID as PID
 import pigpio
 from multiprocessing import Value, Array, Process
@@ -23,7 +24,8 @@ PHASE_END_PROGRAM       = 6
 BASE_BLDC_SPEED     = 275
 START_BLDC_SPEED    = 300
 WAITING_BLDC_SPEED  = 230
-WAITTING_TIME_FOR_START_BLDC = 250 # [ms]
+WAITTING_TIME_FOR_START_BLDC    = 250 # [ms]
+WAITTING_TIME_FOR_CHANGE_BLDC   = 100 # [ms]
 
 SAFETY_STOPPER:bool = True
 
@@ -33,6 +35,8 @@ mpuCal = MPU6050.Cteam_MPU6050_Cal()
 
 esc = [BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC()]
 ESC_PWM_PIN:int = [17, 27, 22, 10, 9, 11, 0, 5]
+UDS_TRIGER_PIN:int = [6, 19, 7, 16, 21]
+UDS_ECHO_PIN:int = [13, 26, 1, 12, 20]
 
 READ_CYCLE = 300 # [Hz]
 CALIBRATION_TIME = 1000
@@ -327,6 +331,9 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     
     for _escNum in range(0, 8, 1):
         esc[_escNum].init(_gpio, ESC_PWM_PIN[_escNum], True)
+        
+    for _udsNum in range(0, 5, 1):
+        uds[_udsNum].init(_gpio, )
     
     print("{:<20} | Set Max and Min Value to ESC Start".format("Main Program"))
     
@@ -379,56 +386,56 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     esc[0].setValue(START_BLDC_SPEED)
     time.sleep(WAITTING_TIME_FOR_START_BLDC)
     esc[0].setValue(WAITING_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    time.sleep(WAITTING_TIME_FOR_CHANGE_BLDC)
     print("{:<20} | BLDC 1 STARTED".format("Main Program"))
     
     # For BLDC 5
     esc[4].setValue(START_BLDC_SPEED)
     time.sleep(WAITTING_TIME_FOR_START_BLDC)
     esc[4].setValue(WAITING_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    time.sleep(WAITTING_TIME_FOR_CHANGE_BLDC)
     print("{:<20} | BLDC 5 STARTED".format("Main Program"))
     
     # For BLDC 3
     esc[2].setValue(START_BLDC_SPEED)
     time.sleep(WAITTING_TIME_FOR_START_BLDC)
     esc[2].setValue(WAITING_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    time.sleep(WAITTING_TIME_FOR_CHANGE_BLDC)
     print("{:<20} | BLDC 3 STARTED".format("Main Program"))
     
     # For BLDC 7
     esc[6].setValue(START_BLDC_SPEED)
     time.sleep(WAITTING_TIME_FOR_START_BLDC)
     esc[6].setValue(WAITING_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    time.sleep(WAITTING_TIME_FOR_CHANGE_BLDC)
     print("{:<20} | BLDC 7 STARTED".format("Main Program"))
     
     # For BLDC 2
     esc[1].setValue(START_BLDC_SPEED)
     time.sleep(WAITTING_TIME_FOR_START_BLDC)
     esc[1].setValue(WAITING_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    time.sleep(WAITTING_TIME_FOR_CHANGE_BLDC)
     print("{:<20} | BLDC 2 STARTED".format("Main Program"))
     
     # For BLDC 6
     esc[5].setValue(START_BLDC_SPEED)
     time.sleep(WAITTING_TIME_FOR_START_BLDC)
     esc[5].setValue(WAITING_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    time.sleep(WAITTING_TIME_FOR_CHANGE_BLDC)
     print("{:<20} | BLDC 6 STARTED".format("Main Program"))
     
     # For BLDC 4
     esc[3].setValue(START_BLDC_SPEED)
     time.sleep(WAITTING_TIME_FOR_START_BLDC)
     esc[3].setValue(WAITING_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    time.sleep(WAITTING_TIME_FOR_CHANGE_BLDC)
     print("{:<20} | BLDC 4 STARTED".format("Main Program"))
     
     # For BLDC 8
     esc[7].setValue(START_BLDC_SPEED)
     time.sleep(WAITTING_TIME_FOR_START_BLDC)
     esc[7].setValue(WAITING_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    time.sleep(WAITTING_TIME_FOR_CHANGE_BLDC)
     print("{:<20} | BLDC 8 STARTED".format("Main Program"))
     
     for _escNum in range(0, 8, 1):
