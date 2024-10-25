@@ -21,4 +21,4 @@ class Cteam_PID:
         self.enableKd = _enableKd        
                 
     def PID(self, _integralValue:float, _rawValue:float, _diffrerentialValue:float):
-        self.ans =  self.enableKi * self.K_I * _integralValue + self.enableKp * self.K_P * _rawValue + self.enableKd * self.K_D + _diffrerentialValue
+        self.ans =  self.enableKi * self.K_I * _integralValue + self.enableKp * self.K_P * _rawValue + self.enableKd * self.K_D * _diffrerentialValue
