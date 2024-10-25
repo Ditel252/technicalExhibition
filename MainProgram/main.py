@@ -20,7 +20,9 @@ PAHSE_SET_READY         = 4
 PAHSE_SET_START         = 5
 PHASE_END_PROGRAM       = 6
 
-BASE_BLDC_SPEED = 275
+BLDC_BASE_GAIN = [1.0, 1.0, 1.0, 1.0,  0.43, 1.0, 0.92, 1.0]
+
+BASE_BLDC_SPEED = 270
 
 SAFETY_STOPPER:bool = True
 
@@ -292,7 +294,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         PID_Gyro[_gyroNum].enableKd = 1
         
         PID_Gyro[_gyroNum].K_I = 0
-        PID_Gyro[_gyroNum].K_P = 1
+        PID_Gyro[_gyroNum].K_P = 1.5
         PID_Gyro[_gyroNum].K_D = 1
         
         PID_Gyro[_gyroNum].init()
@@ -336,7 +338,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     _gpio = pigpio.pi()
     
     for _escNum in range(0, 8, 1):
-        esc[_escNum].init(_gpio, ESC_PWM_PIN[_escNum], True)
+        esc[_escNum].init(_gpio, ESC_PWM_PIN[_escNum], False)
     
     print("{:<20} | Set Max and Min Value to ESC Start".format("Main Program"))
     
@@ -378,7 +380,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     
     
     for _escNum in range(0, 8, 1):
-        esc[_escNum].setValue(230)
+        esc[_escNum].setValue(int(float(215) * BLDC_BASE_GAIN[_escNum]))
     
     
     # ===Waiting Command From Controller(from here)===
@@ -388,7 +390,10 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         pass
     # ===Waiting Command From Controller(this far)===
     
-    while(permittedPhases.value < PHASE_END_PROGRAM):
+    _speedCount:int = 210
+    _lastUpTime:float = time.perf_counter()
+    
+    while(permittedPhases.value < PHASE_END_PROGRAM):        
         _escSpeedSum:float = [BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED]
         # Begin MainProgram While from here
         
@@ -429,13 +434,14 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         _escSpeedSum[7] += 1 * PID_Gyro[0].ans
         
         for _escNum in range(0, 8, 1):
-            if(_escSpeedSum[_escNum] > 350):
-                _escSpeedSum[_escNum] = 350
+            _escSpeedSum[_escNum] *= BLDC_BASE_GAIN[_escNum]
+            if(_escSpeedSum[_escNum] > 370):
+                _escSpeedSum[_escNum] = 370
         
         for _escNum in range(0, 8, 1):
             esc[_escNum].setValue(int(_escSpeedSum[_escNum]))
             
-        # print("\r{:3d} {:3d} {:3d} {:3d} | {:3d} {:3d} {:3d} {:3d}".format(int(_escSpeedSum[0]), int(_escSpeedSum[1]), int(_escSpeedSum[2]), int(_escSpeedSum[3]), int(_escSpeedSum[4]), int(_escSpeedSum[5]), int(_escSpeedSum[6]), int(_escSpeedSum[7])), end="")
+        print("\r{:3d} {:3d} {:3d} {:3d} | {:3d} {:3d} {:3d} {:3d}".format(int(_escSpeedSum[0]), int(_escSpeedSum[1]), int(_escSpeedSum[2]), int(_escSpeedSum[3]), int(_escSpeedSum[4]), int(_escSpeedSum[5]), int(_escSpeedSum[6]), int(_escSpeedSum[7])), end="")
         
     
     for _escNum in range(0, 8, 1):
