@@ -20,9 +20,9 @@ PAHSE_SET_READY         = 4
 PAHSE_SET_START         = 5
 PHASE_END_PROGRAM       = 6
 
-BLDC_BASE_GAIN = [1.05, 1.0, 1.0, 1.0,  0.435, 1.0, 0.93, 1.0]
+BLDC_BASE_GAIN = [1.0, 1.0, 1.0, 1.0,  0.435, 1.0, 1.0, 1.0]
 
-BASE_BLDC_SPEED = 270
+BASE_BLDC_SPEED = 280
 
 SAFETY_STOPPER:bool = True
 
@@ -291,11 +291,11 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     for _gyroNum in range(0, 3, 1):
         PID_Gyro[_gyroNum].enableKi = 0
         PID_Gyro[_gyroNum].enableKp = 1
-        PID_Gyro[_gyroNum].enableKd = 0
+        PID_Gyro[_gyroNum].enableKd = 1
         
         PID_Gyro[_gyroNum].K_I = 0
-        PID_Gyro[_gyroNum].K_P = 1.2
-        PID_Gyro[_gyroNum].K_D = 0
+        PID_Gyro[_gyroNum].K_P = 2
+        PID_Gyro[_gyroNum].K_D = 2.25
         
         PID_Gyro[_gyroNum].init()
     
@@ -366,8 +366,6 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     
     print("{:<20} | Order Measure Start".format("Main Program"))
     
-    permitRequestPhases.value = PHASE_END_PROGRAM
-    
     for _escNum in range(0, 8, 1):
         esc[_escNum].setValue(300)
     
@@ -392,6 +390,8 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     
     _speedCount:int = 210
     _lastUpTime:float = time.perf_counter()
+    
+    permitRequestPhases.value = PHASE_END_PROGRAM
     
     while(permittedPhases.value < PHASE_END_PROGRAM):        
         _escSpeedSum:float = [BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED]
