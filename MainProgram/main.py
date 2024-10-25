@@ -6,21 +6,24 @@ import pigpio
 from multiprocessing import Value, Array, Process
 import time
 
-CMD_START_CALIBRATION   = 0x01
-CMD_START_SETUP_ESC     = 0x02
+CMD_START_SETUP_ESC     = 0x01
+CMD_START_CALIBRATION   = 0x02
 CMD_START_MEASUREING    = 0x03
-CMD_SET_READY           = 0x04
-CMD_SET_START           = 0x05
+CMD_ESC_START           = 0x04
+CMD_TAKE_OFF            = 0x05
 CMD_END_PROGRAM         = 0x06
 
-PHASE_START_CALIBRATION = 1
-PHASE_START_SETUP_ESC   = 2
+PHASE_START_SETUP_ESC   = 1
+PHASE_START_CALIBRATION = 2
 PHASE_START_MEASUREING  = 3
-PAHSE_SET_READY         = 4
-PAHSE_SET_START         = 5
+PHASE_ESC_START         = 4
+PAHSE_TAKE_OFF          = 5
 PHASE_END_PROGRAM       = 6
 
-BASE_BLDC_SPEED = 275
+BASE_BLDC_SPEED     = 275
+START_BLDC_SPEED    = 300
+WAITING_BLDC_SPEED  = 230
+WAITTING_TIME_FOR_START_BLDC = 250 # [ms]
 
 SAFETY_STOPPER:bool = True
 
@@ -188,21 +191,7 @@ def safetyStopper(endReadPosture, permittedPhases, permitRequestPhases):
     
     permittedPhases.value = 0
     
-    if(SAFETY_STOPPER): # Calibration
-        while(permitRequestPhases.value < PHASE_START_CALIBRATION):
-            pass
-        
-        print("{:<20} $ Waiting For Start Calibration Command".format("Safety Stopper"))
-        while(not endReadPosture.value):
-            if(controllerRx.getReadByte()):
-                if(controllerRx.readByte == CMD_START_CALIBRATION):
-                    break
-            time.sleep(0.01)
-        print("{:<20} | Get Start Calibration Command".format("Safety Stopper"))
     
-    permittedPhases.value = PHASE_START_CALIBRATION
-    
-        
     if(SAFETY_STOPPER): # ESC Setup
         while(permitRequestPhases.value < PHASE_START_SETUP_ESC):
             pass
@@ -216,6 +205,21 @@ def safetyStopper(endReadPosture, permittedPhases, permitRequestPhases):
         print("{:<20} | Get Start Setup ESC Command".format("Safety Stopper"))
         
     permittedPhases.value = PHASE_START_SETUP_ESC
+    
+    
+    if(SAFETY_STOPPER): # Calibration
+        while(permitRequestPhases.value < PHASE_START_CALIBRATION):
+            pass
+        
+        print("{:<20} $ Waiting For Start Calibration Command".format("Safety Stopper"))
+        while(not endReadPosture.value):
+            if(controllerRx.getReadByte()):
+                if(controllerRx.readByte == CMD_START_CALIBRATION):
+                    break
+            time.sleep(0.01)
+        print("{:<20} | Get Start Calibration Command".format("Safety Stopper"))
+    
+    permittedPhases.value = PHASE_START_CALIBRATION
     
         
     if(SAFETY_STOPPER): # Start Measureing
@@ -233,37 +237,37 @@ def safetyStopper(endReadPosture, permittedPhases, permitRequestPhases):
     permittedPhases.value = PHASE_START_MEASUREING
 
     
-    if(SAFETY_STOPPER): # Start Measureing
-        while(permitRequestPhases.value < PAHSE_SET_READY):
+    if(SAFETY_STOPPER): # ESC Start
+        while(permitRequestPhases.value < PHASE_ESC_START):
             pass
         
         print("{:<20} $ Waiting For Ready Command".format("Safety Stopper"))
         while(not endReadPosture.value):
             if(controllerRx.getReadByte()):
-                if(controllerRx.readByte == CMD_SET_READY):
+                if(controllerRx.readByte == CMD_ESC_START):
                     break
             time.sleep(0.01)
         print("{:<20} | Get Ready Command".format("Safety Stopper"))
 
-    permittedPhases.value = PAHSE_SET_READY
+    permittedPhases.value = PHASE_ESC_START
 
     
-    if(SAFETY_STOPPER): # Start Measureing
-        while(permitRequestPhases.value < PAHSE_SET_START):
+    if(SAFETY_STOPPER): # Take Off
+        while(permitRequestPhases.value < PAHSE_TAKE_OFF):
             pass
         
         print("{:<20} $ Waiting For Start Command".format("Safety Stopper"))
         while(not endReadPosture.value):
             if(controllerRx.getReadByte()):
-                if(controllerRx.readByte == CMD_SET_START):
+                if(controllerRx.readByte == CMD_TAKE_OFF):
                     break
             time.sleep(0.01)
         print("{:<20} | Get Start Start Command".format("Safety Stopper"))
 
-    permittedPhases.value = PAHSE_SET_START
+    permittedPhases.value = PAHSE_TAKE_OFF
 
     
-    if(SAFETY_STOPPER): # Start Measureing
+    if(SAFETY_STOPPER): # Program End
         while(permitRequestPhases.value < PHASE_END_PROGRAM):
             pass
         
@@ -311,21 +315,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     PID_Accl.init()
     # ====PID Setting(this far)====
     
-    # ===Waiting Command From Controller(from here)===
-    permitRequestPhases.value = PHASE_START_CALIBRATION
-    
-    while(permittedPhases.value < PHASE_START_CALIBRATION):
-        pass
-    # ===Waiting Command From Controller(this far)===
-        
-        
-    isCalibrationStart.value = 1
-    
-    while (not wasCalibrationFinished.value):
-        pass
-    
-    
-    # ===Waiting Command From Controller(from here)===
+     # ===Waiting Command From Controller(from here)===
     permitRequestPhases.value = PHASE_START_SETUP_ESC
     
     while(permittedPhases.value < PHASE_START_SETUP_ESC):
@@ -352,6 +342,20 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         
     print("{:<20} | Set Max and Min Value to ESC End".format("Main Program"))
     
+    
+    # ===Waiting Command From Controller(from here)===
+    permitRequestPhases.value = PHASE_START_CALIBRATION
+    
+    while(permittedPhases.value < PHASE_START_CALIBRATION):
+        pass
+    # ===Waiting Command From Controller(this far)===
+        
+        
+    isCalibrationStart.value = 1
+    
+    while (not wasCalibrationFinished.value):
+        pass
+    
     # ===Waiting Command From Controller(from here)===
     permitRequestPhases.value = PHASE_START_MEASUREING
     
@@ -359,34 +363,86 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         pass
     # ===Waiting Command From Controller(this far)===
     
-    
     wasMeasureStarted.value = 1
     
     print("{:<20} | Order Measure Start".format("Main Program"))
     
+    
+    # ===Waiting Command From Controller(from here)===
+    permitRequestPhases.value = PHASE_ESC_START
+    
+    while(permittedPhases.value < PHASE_ESC_START):
+        pass
+    # ===Waiting Command From Controller(this far)===
+    
+    # For BLDC 1
+    esc[0].setValue(START_BLDC_SPEED)
+    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    esc[0].setValue(WAITING_BLDC_SPEED)
+    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    print("{:<20} | BLDC 1 STARTED".format("Main Program"))
+    
+    # For BLDC 5
+    esc[4].setValue(START_BLDC_SPEED)
+    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    esc[4].setValue(WAITING_BLDC_SPEED)
+    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    print("{:<20} | BLDC 5 STARTED".format("Main Program"))
+    
+    # For BLDC 3
+    esc[2].setValue(START_BLDC_SPEED)
+    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    esc[2].setValue(WAITING_BLDC_SPEED)
+    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    print("{:<20} | BLDC 3 STARTED".format("Main Program"))
+    
+    # For BLDC 7
+    esc[6].setValue(START_BLDC_SPEED)
+    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    esc[6].setValue(WAITING_BLDC_SPEED)
+    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    print("{:<20} | BLDC 7 STARTED".format("Main Program"))
+    
+    # For BLDC 2
+    esc[1].setValue(START_BLDC_SPEED)
+    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    esc[1].setValue(WAITING_BLDC_SPEED)
+    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    print("{:<20} | BLDC 2 STARTED".format("Main Program"))
+    
+    # For BLDC 6
+    esc[5].setValue(START_BLDC_SPEED)
+    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    esc[5].setValue(WAITING_BLDC_SPEED)
+    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    print("{:<20} | BLDC 6 STARTED".format("Main Program"))
+    
+    # For BLDC 4
+    esc[3].setValue(START_BLDC_SPEED)
+    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    esc[3].setValue(WAITING_BLDC_SPEED)
+    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    print("{:<20} | BLDC 4 STARTED".format("Main Program"))
+    
+    # For BLDC 8
+    esc[7].setValue(START_BLDC_SPEED)
+    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    esc[7].setValue(WAITING_BLDC_SPEED)
+    time.sleep(WAITTING_TIME_FOR_START_BLDC)
+    print("{:<20} | BLDC 8 STARTED".format("Main Program"))
+    
+    for _escNum in range(0, 8, 1):
+        esc[_escNum].setValue(WAITING_BLDC_SPEED)
+    
+    # ===Waiting Command From Controller(from here)===
+    permitRequestPhases.value = PAHSE_TAKE_OFF
+    
+    while(permittedPhases.value < PAHSE_TAKE_OFF):
+        pass
+    # ===Waiting Command From Controller(this far)===
+    
+    
     permitRequestPhases.value = PHASE_END_PROGRAM
-    
-    for _escNum in range(0, 8, 1):
-        esc[_escNum].setValue(300)
-    
-    # ===Waiting Command From Controller(from here)===
-    permitRequestPhases.value = PAHSE_SET_READY
-    
-    while(permittedPhases.value < PAHSE_SET_READY):
-        pass
-    # ===Waiting Command From Controller(this far)===
-    
-    
-    for _escNum in range(0, 8, 1):
-        esc[_escNum].setValue(230)
-    
-    
-    # ===Waiting Command From Controller(from here)===
-    permitRequestPhases.value = PAHSE_SET_START
-    
-    while(permittedPhases.value < PAHSE_SET_START):
-        pass
-    # ===Waiting Command From Controller(this far)===
     
     while(permittedPhases.value < PHASE_END_PROGRAM):
         _escSpeedSum:float = [BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED]
