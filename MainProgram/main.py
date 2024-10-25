@@ -301,9 +301,9 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         PID_Gyro[_gyroNum].enableKp = 1
         PID_Gyro[_gyroNum].enableKd = 1
         
-        PID_Gyro[_gyroNum].K_I = 0
-        PID_Gyro[_gyroNum].K_P = 1
-        PID_Gyro[_gyroNum].K_D = 1
+        PID_Gyro[_gyroNum].K_I = 0.0
+        PID_Gyro[_gyroNum].K_P = 2.0
+        PID_Gyro[_gyroNum].K_D = 2.25
         
         PID_Gyro[_gyroNum].init()
     
@@ -494,8 +494,9 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         _escSpeedSum[7] += 1 * PID_Gyro[0].ans
         
         for _escNum in range(0, 8, 1):
-            if(_escSpeedSum[_escNum] > 350):
-                _escSpeedSum[_escNum] = 350
+            _escSpeedSum[_escNum] *= BLDC_BASE_GAIN[_escNum]
+            if(_escSpeedSum[_escNum] > 370):
+                _escSpeedSum[_escNum] = 370
         
         for _escNum in range(0, 8, 1):
             esc[_escNum].setValue(int(_escSpeedSum[_escNum]))
