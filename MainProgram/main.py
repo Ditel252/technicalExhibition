@@ -20,7 +20,7 @@ PAHSE_SET_READY         = 4
 PAHSE_SET_START         = 5
 PHASE_END_PROGRAM       = 6
 
-BLDC_BASE_GAIN = [1.0, 1.0, 1.0, 1.0,  0.43, 1.0, 0.92, 1.0]
+BLDC_BASE_GAIN = [1.05, 1.0, 1.0, 1.0,  0.435, 1.0, 0.93, 1.0]
 
 BASE_BLDC_SPEED = 270
 
@@ -291,11 +291,11 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     for _gyroNum in range(0, 3, 1):
         PID_Gyro[_gyroNum].enableKi = 0
         PID_Gyro[_gyroNum].enableKp = 1
-        PID_Gyro[_gyroNum].enableKd = 1
+        PID_Gyro[_gyroNum].enableKd = 0
         
         PID_Gyro[_gyroNum].K_I = 0
-        PID_Gyro[_gyroNum].K_P = 1.5
-        PID_Gyro[_gyroNum].K_D = 1
+        PID_Gyro[_gyroNum].K_P = 1.2
+        PID_Gyro[_gyroNum].K_D = 0
         
         PID_Gyro[_gyroNum].init()
     
@@ -441,7 +441,8 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         for _escNum in range(0, 8, 1):
             esc[_escNum].setValue(int(_escSpeedSum[_escNum]))
             
-        print("\r{:3d} {:3d} {:3d} {:3d} | {:3d} {:3d} {:3d} {:3d}".format(int(_escSpeedSum[0]), int(_escSpeedSum[1]), int(_escSpeedSum[2]), int(_escSpeedSum[3]), int(_escSpeedSum[4]), int(_escSpeedSum[5]), int(_escSpeedSum[6]), int(_escSpeedSum[7])), end="")
+        # print("\r{:3d} {:3d} {:3d} {:3d} | {:3d} {:3d} {:3d} {:3d}".format(int(_escSpeedSum[0]), int(_escSpeedSum[1]), int(_escSpeedSum[2]), int(_escSpeedSum[3]), int(_escSpeedSum[4]), int(_escSpeedSum[5]), int(_escSpeedSum[6]), int(_escSpeedSum[7])), end="")
+        print("\r{:6.2f} {:6.2f} {:6.2f}".format(int(angle[0]), int(angle[1]), int(angle[2]), end=""))
         
     
     for _escNum in range(0, 8, 1):
