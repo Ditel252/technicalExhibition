@@ -36,6 +36,7 @@ mpuI2c = MPU6050.Cteam_MPU6050_I2c()
 mpuCal = MPU6050.Cteam_MPU6050_Cal()
 
 esc = [BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC()]
+uds = [HCSR04.Cteam_HCSR04(), HCSR04.Cteam_HCSR04(), HCSR04.Cteam_HCSR04()]
 ESC_PWM_PIN:int = [17, 27, 22, 10, 9, 11, 0, 5]
 UDS_TRIGER_PIN:int = [6, 19, 7, 16, 21]
 UDS_ECHO_PIN:int = [13, 26, 1, 12, 20]
@@ -335,7 +336,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         esc[_escNum].init(_gpio, ESC_PWM_PIN[_escNum], True)
         
     for _udsNum in range(0, 5, 1):
-        uds[_udsNum].init(_gpio, )
+        uds[_udsNum].init(_gpio, UDS_TRIGER_PIN[_udsNum], UDS_ECHO_PIN[_udsNum])
     
     print("{:<20} | Set Max and Min Value to ESC Start".format("Main Program"))
     
