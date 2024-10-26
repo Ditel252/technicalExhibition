@@ -1,4 +1,4 @@
-# ver 0.9.7
+# ver 0.9.8
 import Cteam_MPU6050_Lite as MPU6050
 import Cteam_BLDC as BLDC
 import Cteam_ControllerReciver as CERx
@@ -349,7 +349,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     
     PID_Height.K_I = 0
     PID_Height.K_P = 300
-    PID_Height.K_D = 200
+    PID_Height.K_D = 300
     
     PID_Height.init()
     # ====PID Setting(this far)====
