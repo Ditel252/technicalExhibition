@@ -324,7 +324,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         
         PID_Gyro[_gyroNum].K_I = 0.0
         PID_Gyro[_gyroNum].K_P = 2.0
-        PID_Gyro[_gyroNum].K_D = 2.25
+        PID_Gyro[_gyroNum].K_D = 2.3
         
         PID_Gyro[_gyroNum].init()
     
@@ -349,7 +349,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     
     PID_Height.K_I = 0
     PID_Height.K_P = 300
-    PID_Height.K_D = 300
+    PID_Height.K_D = 200
     
     PID_Height.init()
     # ====PID Setting(this far)====
