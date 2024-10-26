@@ -46,11 +46,11 @@ if __name__ == "__main__":
     
     gpio = pigpio.pi()
     
-    hcsr04.init(gpio, UDS_TRIGER_PIN[1], UDS_ECHO_PIN[1])
+    hcsr04.init(gpio, UDS_TRIGER_PIN[4], UDS_ECHO_PIN[4])
     
     while(True):
         if(not hcsr04.getDistance()):
             pass
         
-        print("\rdistance = {:6.3f} [m]".format(hcsr04.distance), end="")
+        print("distance = {:6.3f} [m]".format(hcsr04.distance))
         time.sleep(0.005)

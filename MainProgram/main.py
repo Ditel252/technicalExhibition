@@ -24,8 +24,8 @@ PHASE_END_PROGRAM       = 6
 BASE_BLDC_SPEED     = 275
 START_BLDC_SPEED    = 290
 WAITING_BLDC_SPEED  = 230
-WAITTING_TIME_FOR_START_BLDC    = 250 # [ms]
-WAITTING_TIME_FOR_CHANGE_BLDC   = 100 # [ms]
+WAITTING_TIME_FOR_START_BLDC    = 250.0 # [ms]
+WAITTING_TIME_FOR_CHANGE_BLDC   = 100.0 # [ms]
 
 BLDC_BASE_GAIN = [1.0, 1.0, 1.0, 0.95,  0.55, 0.95, 1.0, 1.0]
 
@@ -36,7 +36,7 @@ mpuI2c = MPU6050.Cteam_MPU6050_I2c()
 mpuCal = MPU6050.Cteam_MPU6050_Cal()
 
 esc = [BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC(), BLDC.Cteam_BLDC()]
-uds = [HCSR04.Cteam_HCSR04(), HCSR04.Cteam_HCSR04(), HCSR04.Cteam_HCSR04()]
+uds = [HCSR04.Cteam_HCSR04(), HCSR04.Cteam_HCSR04(), HCSR04.Cteam_HCSR04(), HCSR04.Cteam_HCSR04(), HCSR04.Cteam_HCSR04()]
 ESC_PWM_PIN:int = [17, 27, 22, 10, 9, 11, 0, 5]
 UDS_TRIGER_PIN:int = [6, 19, 7, 16, 21]
 UDS_ECHO_PIN:int = [13, 26, 1, 12, 20]
@@ -398,63 +398,19 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     # ===Waiting Command From Controller(this far)===
     
     # For BLDC 1
-    esc[0].setValue(START_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_START_BLDC)
-    esc[0].setValue(WAITING_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_CHANGE_BLDC)
-    print("{:<20} | BLDC 1 STARTED".format("Main Program"))
-    
-    # For BLDC 5
-    esc[4].setValue(START_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_START_BLDC)
-    esc[4].setValue(WAITING_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_CHANGE_BLDC)
-    print("{:<20} | BLDC 5 STARTED".format("Main Program"))
-    
-    # For BLDC 3
-    esc[2].setValue(START_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_START_BLDC)
-    esc[2].setValue(WAITING_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_CHANGE_BLDC)
-    print("{:<20} | BLDC 3 STARTED".format("Main Program"))
-    
-    # For BLDC 7
-    esc[6].setValue(START_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_START_BLDC)
-    esc[6].setValue(WAITING_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_CHANGE_BLDC)
-    print("{:<20} | BLDC 7 STARTED".format("Main Program"))
-    
-    # For BLDC 2
-    esc[1].setValue(START_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_START_BLDC)
-    esc[1].setValue(WAITING_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_CHANGE_BLDC)
-    print("{:<20} | BLDC 2 STARTED".format("Main Program"))
-    
-    # For BLDC 6
-    esc[5].setValue(START_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_START_BLDC)
-    esc[5].setValue(WAITING_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_CHANGE_BLDC)
-    print("{:<20} | BLDC 6 STARTED".format("Main Program"))
-    
-    # For BLDC 4
-    esc[3].setValue(START_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_START_BLDC)
-    esc[3].setValue(WAITING_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_CHANGE_BLDC)
-    print("{:<20} | BLDC 4 STARTED".format("Main Program"))
-    
-    # For BLDC 8
-    esc[7].setValue(START_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_START_BLDC)
-    esc[7].setValue(WAITING_BLDC_SPEED)
-    time.sleep(WAITTING_TIME_FOR_CHANGE_BLDC)
-    print("{:<20} | BLDC 8 STARTED".format("Main Program"))
+    for _escNum in range(0, 8, 1):
+        esc[_escNum].setValue(START_BLDC_SPEED * BLDC_BASE_GAIN[_escNum])
+        
+    time.sleep(0.2)
     
     for _escNum in range(0, 8, 1):
-        esc[_escNum].setValue(WAITING_BLDC_SPEED)
+        esc[_escNum].setValue(WAITING_BLDC_SPEED * BLDC_BASE_GAIN[_escNum])
+        
+    time.sleep(0.1)
+    print("{:<20} | BLDC STARTED".format("Main Program"))
+    
+    # for _escNum in range(0, 8, 1):
+    #     esc[_escNum].setValue(WAITING_BLDC_SPEED)
     
     # ===Waiting Command From Controller(from here)===
     permitRequestPhases.value = PAHSE_TAKE_OFF
