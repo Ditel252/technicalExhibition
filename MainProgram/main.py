@@ -1,4 +1,4 @@
-# ver 0.9.8
+# ver 0.9.10
 import Cteam_MPU6050_Lite as MPU6050
 import Cteam_BLDC as BLDC
 import Cteam_ControllerReciver as CERx
