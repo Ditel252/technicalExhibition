@@ -24,15 +24,19 @@ PAHSE_TAKE_OFF          = 5
 PAHSE_START_HEIGHT_PD   = 6
 PHASE_END_PROGRAM       = 7
 
-BASE_BLDC_SPEED     = 275
-START_BLDC_SPEED    = 310
-WAITING_BLDC_SPEED  = 230
+MAX_BLDC_SPEED = 350
+# BASE_BLDC_SPEED     = 275
+BASE_BLDC_PERCENT = 80 # [%]
+# START_BLDC_SPEED    = 310
+START_BLDC_PERCENT = 82.5 # [%]
+# WAITING_BLDC_SPEED  = 230
+WAITING_BLDC_PERCENT = 70 # [%]
 WAITTING_TIME_FOR_START_BLDC    = 250.0 # [ms]
 WAITTING_TIME_FOR_CHANGE_BLDC   = 100.0 # [ms]
 
 REF_HEIGHT = 0.4 # [m]
 
-BLDC_BASE_GAIN = [1.0, 1.0, 1.0, 0.96,  0.56, 0.96, 1.0, 1.0]
+BLDC_BASE_GAIN = [1.0, 1.0, 1.0, 0.975,  0.875, 0.975, 1.0, 1.0]
 
 SAFETY_STOPPER:bool = True
 
@@ -344,8 +348,8 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     PID_Height = PID.Cteam_PID()
     
     PID_Height.enableKi = 0
-    PID_Height.enableKp = 1
-    PID_Height.enableKd = 1
+    PID_Height.enableKp = 0
+    PID_Height.enableKd = 0
     
     PID_Height.K_I = 0
     PID_Height.K_P = 300
@@ -354,7 +358,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     PID_Height.init()
     # ====PID Setting(this far)====
     
-     # ===Waiting Command From Controller(from here)===
+    # ===Waiting Command From Controller(from here)===
     permitRequestPhases.value = PHASE_START_SETUP_ESC
     
     while(permittedPhases.value < PHASE_START_SETUP_ESC):
@@ -366,6 +370,43 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     
     for _escNum in range(0, 8, 1):
         esc[_escNum].init(_gpio, ESC_PWM_PIN[_escNum], False)
+        
+        esc[_escNum].maxValueOfMaxPercent = MAX_BLDC_SPEED
+    
+    # ===Setting coefficient(from here)===
+    esc[0].proximityFormula_coefficientA = -0.008
+    esc[0].proximityFormula_coefficientB = 26.5
+    esc[0].proximityFormula_coefficientC = -17000
+    
+    esc[1].proximityFormula_coefficientA = -0.008
+    esc[1].proximityFormula_coefficientB = 26.5
+    esc[1].proximityFormula_coefficientC = -17000
+    
+    esc[2].proximityFormula_coefficientA = -0.008
+    esc[2].proximityFormula_coefficientB = 26.5
+    esc[2].proximityFormula_coefficientC = -17000
+    
+    esc[3].proximityFormula_coefficientA = -0.008
+    esc[3].proximityFormula_coefficientB = 26.5
+    esc[3].proximityFormula_coefficientC = -17000
+    
+    
+    esc[4].proximityFormula_coefficientA = -0.01
+    esc[4].proximityFormula_coefficientB = 32.344
+    esc[4].proximityFormula_coefficientC = -21043
+    
+    esc[5].proximityFormula_coefficientA = -0.008
+    esc[5].proximityFormula_coefficientB = 26.5
+    esc[5].proximityFormula_coefficientC = -17000
+    
+    esc[6].proximityFormula_coefficientA = -0.008
+    esc[6].proximityFormula_coefficientB = 26.5
+    esc[6].proximityFormula_coefficientC = 17000
+    
+    esc[7].proximityFormula_coefficientA = -0.008
+    esc[7].proximityFormula_coefficientB = 26.5
+    esc[7].proximityFormula_coefficientC = -17000
+    # ===Setting coefficient(this far)===
         
     for _udsNum in range(0, 5, 1):
         uds[_udsNum].init(_gpio, UDS_TRIGER_PIN[_udsNum], UDS_ECHO_PIN[_udsNum])
@@ -419,12 +460,18 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     
     # For BLDC 1
     for _escNum in range(0, 8, 1):
-        esc[_escNum].setValue(START_BLDC_SPEED * BLDC_BASE_GAIN[_escNum])
+        esc[_escNum].toDutyFromPercent(START_BLDC_PERCENT * BLDC_BASE_GAIN[_escNum])
+        _startBLDCValue:float = esc[_escNum].convertedValueFormPWM
+        
+        esc[_escNum].setValue(int(_startBLDCValue))
         
     time.sleep(0.2)
     
     for _escNum in range(0, 8, 1):
-        esc[_escNum].setValue(WAITING_BLDC_SPEED * BLDC_BASE_GAIN[_escNum])
+        esc[_escNum].toDutyFromPercent(WAITING_BLDC_PERCENT * BLDC_BASE_GAIN[_escNum])
+        _waittingBLDCValue:float = esc[_escNum].convertedValueFormPWM
+        
+        esc[_escNum].setValue(int(_waittingBLDCValue))
         
     time.sleep(0.1)
     print("{:<20} | BLDC STARTED".format("Main Program"))
@@ -450,7 +497,12 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     _lastReadTime:float = -1 # [s]
     
     while(permittedPhases.value < PHASE_END_PROGRAM):
-        _escSpeedSum:float = [BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED]
+        _escSpeedSum:float = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        
+        for _escNum in range(0, 8, 1):
+            esc[_escNum].toDutyFromPercent(BASE_BLDC_PERCENT * BLDC_BASE_GAIN[_escNum])
+            _escSpeedSum[_escNum] =  esc[_escNum].convertedValueFormPWM
+        
         # Begin MainProgram While from here
         
         

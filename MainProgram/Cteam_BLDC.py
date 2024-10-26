@@ -25,7 +25,7 @@ class Cteam_BLDC:
         self.gpio.set_PWM_frequency(self.pwmPin, 50)
         self.value:int = MIN_SIGNAL
         
-        self.maxValueOfPercent:float = 1000
+        self.maxValueOfMaxPercent:float = 1000
         
         # y = ax^2 + bx + c
         self.proximityFormula_coefficientA:float = 1.0
@@ -35,15 +35,15 @@ class Cteam_BLDC:
         self.convertedValueFormPWM:float = 0.0
         
     def toDutyFromPercent(self, _percent:float):
-        _maxPWM:float = self.proximityFormula_coefficientA * ((self.maxValueOfPercent + MIN_SIGNAL) ** 2) + self.proximityFormula_coefficientB * (self.maxValueOfPercent + MIN_SIGNAL) + self.proximityFormula_coefficientC
+        _maxPWM:float = self.proximityFormula_coefficientA * ((self.maxValueOfMaxPercent + MIN_SIGNAL) ** 2) + self.proximityFormula_coefficientB * (self.maxValueOfMaxPercent + MIN_SIGNAL) + self.proximityFormula_coefficientC
         _minPWM:float = self.proximityFormula_coefficientA * (MIN_SIGNAL ** 2) + self.proximityFormula_coefficientB *MIN_SIGNAL + self.proximityFormula_coefficientC
         
         _requestPWM:float = (_percent / 100.0) * (_maxPWM - _minPWM) + _minPWM
         
         self.convertedValueFormPWM = (-1 * self.proximityFormula_coefficientB + math.sqrt((self.proximityFormula_coefficientB ** 2) - 4 * self.proximityFormula_coefficientA * (self.proximityFormula_coefficientC - _requestPWM))) / (2 * self.proximityFormula_coefficientA) - MIN_SIGNAL
         
-        if(self.convertedValueFormPWM > self.maxValueOfPercent):
-            self.convertedValueFormPWM = self.maxValueOfPercent
+        if(self.convertedValueFormPWM > self.maxValueOfMaxPercent):
+            self.convertedValueFormPWM = self.maxValueOfMaxPercent
         
     def setValue(self, _value:int):
         # 入力が全て0, 0ならモータ停止
