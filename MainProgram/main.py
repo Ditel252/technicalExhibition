@@ -447,7 +447,6 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     time.sleep(0.003)
     
     _lastReadTime:float = -1 # [s]
-    _nowReadTime:float = time.perf_counter()
     
     while(permittedPhases.value < PHASE_END_PROGRAM):
         _escSpeedSum:float = [BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED]
@@ -467,10 +466,13 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
             PID_Gyro[_gyroNum].K_P = 2.0 / 1.15
             PID_Gyro[_gyroNum].K_D = 2.25
             
+            _nowReadTime = time.perf_counter()
             if(_lastReadTime >= 0.0):
-                PID_Height.PID(0, REF_HEIGHT - uds[4].distance, 0)
+                PID_Height.PID(0, REF_HEIGHT - uds[4].distance, float(_lastHeight - uds[4].distance) / float(_nowReadTime - _lastReadTime))
             else:
                 PID_Height.PID(0, REF_HEIGHT - uds[4].distance, 0)
+                
+            _lastReadTime = _nowReadTime
                 
             for _emcNum in range(0, 8, 1):
                 _escSpeedSum[_emcNum] += PID_Height.ans
