@@ -29,7 +29,7 @@ WAITING_BLDC_SPEED  = 230
 WAITTING_TIME_FOR_START_BLDC    = 250.0 # [ms]
 WAITTING_TIME_FOR_CHANGE_BLDC   = 100.0 # [ms]
 
-REF_HEIGHT = 0.25 # [m]
+REF_HEIGHT = 0.4 # [m]
 
 BLDC_BASE_GAIN = [1.0, 1.0, 1.0, 0.96,  0.56, 0.96, 1.0, 1.0]
 
@@ -344,11 +344,11 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     
     PID_Height.enableKi = 0
     PID_Height.enableKp = 1
-    PID_Height.enableKd = 0
+    PID_Height.enableKd = 1
     
     PID_Height.K_I = 0
-    PID_Height.K_P = 10
-    PID_Height.K_D = 0
+    PID_Height.K_P = 300
+    PID_Height.K_D = 100
     
     PID_Height.init()
     # ====PID Setting(this far)====
@@ -444,24 +444,33 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     _velocityOfHeight:float = 0.0
     if(uds[4].getDistance() == False):
         print("{:<20} | False Get Heignt".format("Main Program"))
-    _lastHight:float = uds[4].distance
+    time.sleep(0.003)
     
-    _1CycleTime:float = 0.0 # [s]
-    _1CycleTimeLastTime:float = time.perf_counter()
+    _lastReadTime:float = -1 # [s]
+    _nowReadTime:float = time.perf_counter()
     
     while(permittedPhases.value < PHASE_END_PROGRAM):
         _escSpeedSum:float = [BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED]
         # Begin MainProgram While from here
         
-        if(permittedPhases.value >= PAHSE_START_HEIGHT_PD):
+        if(True):
             permitRequestPhases.value = PHASE_END_PROGRAM
+            
+            _lastHeight = uds[4].distance
+            
             if(uds[4].getDistance() == False):
                 print("{:<20} | False Get Heignt".format("Main Program"))
+                
+            time.sleep(0.003)
             
-            PID_Height.PID(0, REF_HEIGHT - uds[4].distance, 0)
-            PID_Gyro[_gyroNum].K_I = 0.0 / 2
-            PID_Gyro[_gyroNum].K_P = 2.0 / 1.5
-            PID_Gyro[_gyroNum].K_D = 2.25 / 1.5
+            PID_Gyro[_gyroNum].K_I = 0.0 / 1.15
+            PID_Gyro[_gyroNum].K_P = 2.0 / 1.15
+            PID_Gyro[_gyroNum].K_D = 2.25
+            
+            if(_lastReadTime >= 0.0):
+                PID_Height.PID(0, REF_HEIGHT - uds[4].distance, 0)
+            else:
+                PID_Height.PID(0, REF_HEIGHT - uds[4].distance, 0)
                 
             for _emcNum in range(0, 8, 1):
                 _escSpeedSum[_emcNum] += PID_Height.ans
