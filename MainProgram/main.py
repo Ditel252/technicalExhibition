@@ -29,7 +29,7 @@ WAITING_BLDC_SPEED  = 230
 WAITTING_TIME_FOR_START_BLDC    = 250.0 # [ms]
 WAITTING_TIME_FOR_CHANGE_BLDC   = 100.0 # [ms]
 
-REF_HEIGHT = 0.5 # [m]
+REF_HEIGHT = 0.25 # [m]
 
 BLDC_BASE_GAIN = [1.0, 1.0, 1.0, 0.96,  0.56, 0.96, 1.0, 1.0]
 
@@ -364,7 +364,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     _gpio = pigpio.pi()
     
     for _escNum in range(0, 8, 1):
-        esc[_escNum].init(_gpio, ESC_PWM_PIN[_escNum], True)
+        esc[_escNum].init(_gpio, ESC_PWM_PIN[_escNum], False)
         
     for _udsNum in range(0, 5, 1):
         uds[_udsNum].init(_gpio, UDS_TRIGER_PIN[_udsNum], UDS_ECHO_PIN[_udsNum])
@@ -460,8 +460,8 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
             
             PID_Height.PID(0, REF_HEIGHT - uds[4].distance, 0)
             PID_Gyro[_gyroNum].K_I = 0.0 / 2
-            PID_Gyro[_gyroNum].K_P = 2.0 / 2
-            PID_Gyro[_gyroNum].K_D = 2.25 / 2
+            PID_Gyro[_gyroNum].K_P = 2.0 / 1.5
+            PID_Gyro[_gyroNum].K_D = 2.25 / 1.5
                 
             for _emcNum in range(0, 8, 1):
                 _escSpeedSum[_emcNum] += PID_Height.ans
