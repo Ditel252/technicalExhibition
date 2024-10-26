@@ -348,8 +348,8 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     PID_Height.enableKd = 1
     
     PID_Height.K_I = 0
-    PID_Height.K_P = 300
-    PID_Height.K_D = 300
+    PID_Height.K_P = 400
+    PID_Height.K_D = 500
     
     PID_Height.init()
     # ====PID Setting(this far)====
