@@ -12,20 +12,24 @@ CMD_START_CALIBRATION   = 0x02
 CMD_START_MEASUREING    = 0x03
 CMD_ESC_START           = 0x04
 CMD_TAKE_OFF            = 0x05
-CMD_END_PROGRAM         = 0x06
+CMD_START_HEIGHT_PD     = 0x06
+CMD_END_PROGRAM         = 0x07
 
 PHASE_START_SETUP_ESC   = 1
 PHASE_START_CALIBRATION = 2
 PHASE_START_MEASUREING  = 3
 PHASE_ESC_START         = 4
 PAHSE_TAKE_OFF          = 5
-PHASE_END_PROGRAM       = 6
+PAHSE_START_HEIGHT_PD   = 6
+PHASE_END_PROGRAM       = 7
 
 BASE_BLDC_SPEED     = 275
 START_BLDC_SPEED    = 310
 WAITING_BLDC_SPEED  = 230
 WAITTING_TIME_FOR_START_BLDC    = 250.0 # [ms]
 WAITTING_TIME_FOR_CHANGE_BLDC   = 100.0 # [ms]
+
+REF_HEIGHT = 0.5 # [m]
 
 BLDC_BASE_GAIN = [1.0, 1.0, 1.0, 0.96,  0.56, 0.96, 1.0, 1.0]
 
@@ -263,15 +267,30 @@ def safetyStopper(endReadPosture, permittedPhases, permitRequestPhases):
         while(permitRequestPhases.value < PAHSE_TAKE_OFF):
             pass
         
-        print("{:<20} $ Waiting For Start Command".format("Safety Stopper"))
+        print("{:<20} $ Waiting For Take Off Command".format("Safety Stopper"))
         while(not endReadPosture.value):
             if(controllerRx.getReadByte()):
                 if(controllerRx.readByte == CMD_TAKE_OFF):
                     break
             time.sleep(0.01)
-        print("{:<20} | Get Start Start Command".format("Safety Stopper"))
+        print("{:<20} | Get Start Take Off Command".format("Safety Stopper"))
 
     permittedPhases.value = PAHSE_TAKE_OFF
+    
+    
+    if(SAFETY_STOPPER): # Start PD Height
+        while(permitRequestPhases.value < PAHSE_START_HEIGHT_PD):
+            pass
+        
+        print("{:<20} $ Waiting For Start PD Calibration Command".format("Safety Stopper"))
+        while(not endReadPosture.value):
+            if(controllerRx.getReadByte()):
+                if(controllerRx.readByte == CMD_START_HEIGHT_PD):
+                    break
+            time.sleep(0.01)
+        print("{:<20} | Get Start Start PD Calibration Command".format("Safety Stopper"))
+
+    permittedPhases.value = PAHSE_START_HEIGHT_PD
 
     
     if(SAFETY_STOPPER): # Program End
@@ -328,7 +347,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     PID_Height.enableKd = 0
     
     PID_Height.K_I = 0
-    PID_Height.K_P = 1
+    PID_Height.K_P = 10
     PID_Height.K_D = 0
     
     PID_Height.init()
@@ -420,32 +439,28 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     # ===Waiting Command From Controller(this far)===
     
     
-    permitRequestPhases.value = PHASE_END_PROGRAM
+    permitRequestPhases.value = PAHSE_START_HEIGHT_PD
     
-    baseBldcSpeed:float = 0
+    _velocityOfHeight:float = 0.0
+    
+    _1CycleTime:float = 0.0 # [s]
+    _1CycleTimeLastTime:float = time.perf_counter()
     
     while(permittedPhases.value < PHASE_END_PROGRAM):
-        
-        
         _escSpeedSum:float = [BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED]
         # Begin MainProgram While from here
         
-        PID_Gyro[1].PID(0, angle[1], angleRate[1])
-        PID_Gyro[1].PID(0, angle[1], angleRate[1])
-        PID_Gyro[1].PID(0, angle[1], angleRate[1])
-        PID_Gyro[1].PID(0, angle[1], angleRate[1])
-        PID_Gyro[1].PID(0, angle[1], angleRate[1])
-        PID_Gyro[1].PID(0, angle[1], angleRate[1])
-        PID_Gyro[1].PID(0, angle[1], angleRate[1])
+        if(permittedPhases.value >= PAHSE_START_HEIGHT_PD):
+            if(uds[4].getDistance() == True):
+                print("{:<20} | False Get Heignt".format("Main Program"))
+            else:
+                PID_Height.PID(0, REF_HEIGHT - uds[4].distance, 0)
+                
+            for _emcNum in range(0, 8, 1):
+                _escSpeedSum[_emcNum] += PID_Height.ans
+        
         PID_Gyro[1].PID(0, angle[1], angleRate[1])
     
-        PID_Gyro[0].PID(0, angle[0], angleRate[0])
-        PID_Gyro[0].PID(0, angle[0], angleRate[0])
-        PID_Gyro[0].PID(0, angle[0], angleRate[0])
-        PID_Gyro[0].PID(0, angle[0], angleRate[0])
-        PID_Gyro[0].PID(0, angle[0], angleRate[0])
-        PID_Gyro[0].PID(0, angle[0], angleRate[0])
-        PID_Gyro[0].PID(0, angle[0], angleRate[0])
         PID_Gyro[0].PID(0, angle[0], angleRate[0])
                 
         _escSpeedSum[0] += 2 * PID_Gyro[1].ans
@@ -474,7 +489,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         for _escNum in range(0, 8, 1):
             esc[_escNum].setValue(int(_escSpeedSum[_escNum]))
             
-        # print("\r{:3d} {:3d} {:3d} {:3d} | {:3d} {:3d} {:3d} {:3d}".format(int(_escSpeedSum[0]), int(_escSpeedSum[1]), int(_escSpeedSum[2]), int(_escSpeedSum[3]), int(_escSpeedSum[4]), int(_escSpeedSum[5]), int(_escSpeedSum[6]), int(_escSpeedSum[7])), end="")
+        print("\r{:3d} {:3d} {:3d} {:3d} | {:3d} {:3d} {:3d} {:3d}".format(int(_escSpeedSum[0]), int(_escSpeedSum[1]), int(_escSpeedSum[2]), int(_escSpeedSum[3]), int(_escSpeedSum[4]), int(_escSpeedSum[5]), int(_escSpeedSum[6]), int(_escSpeedSum[7])), end="")
         
     
     for _escNum in range(0, 8, 1):
