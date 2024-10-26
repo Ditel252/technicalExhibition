@@ -442,6 +442,9 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     permitRequestPhases.value = PAHSE_START_HEIGHT_PD
     
     _velocityOfHeight:float = 0.0
+    if(uds[4].getDistance() == False):
+        print("{:<20} | False Get Heignt".format("Main Program"))
+    _lastHight:float = uds[4].distance
     
     _1CycleTime:float = 0.0 # [s]
     _1CycleTimeLastTime:float = time.perf_counter()
@@ -451,10 +454,14 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         # Begin MainProgram While from here
         
         if(permittedPhases.value >= PAHSE_START_HEIGHT_PD):
-            if(uds[4].getDistance() == True):
+            permitRequestPhases.value = PHASE_END_PROGRAM
+            if(uds[4].getDistance() == False):
                 print("{:<20} | False Get Heignt".format("Main Program"))
-            else:
-                PID_Height.PID(0, REF_HEIGHT - uds[4].distance, 0)
+            
+            PID_Height.PID(0, REF_HEIGHT - uds[4].distance, 0)
+            PID_Gyro[_gyroNum].K_I = 0.0 / 2
+            PID_Gyro[_gyroNum].K_P = 2.0 / 2
+            PID_Gyro[_gyroNum].K_D = 2.25 / 2
                 
             for _emcNum in range(0, 8, 1):
                 _escSpeedSum[_emcNum] += PID_Height.ans
