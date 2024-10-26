@@ -1,4 +1,4 @@
-# ver 0.9.8
+# ver 0.9.9
 import Cteam_MPU6050_Lite as MPU6050
 import Cteam_BLDC as BLDC
 import Cteam_ControllerReciver as CERx
@@ -465,7 +465,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
             
             PID_Gyro[_gyroNum].K_I = 0.0 / 1.15
             PID_Gyro[_gyroNum].K_P = 2.0 / 1.15
-            PID_Gyro[_gyroNum].K_D = 2.25
+            PID_Gyro[_gyroNum].K_D = 3
             
             _nowReadTime = time.perf_counter()
             if(_lastReadTime >= 0.0):
