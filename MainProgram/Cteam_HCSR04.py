@@ -46,7 +46,7 @@ if __name__ == "__main__":
     
     gpio = pigpio.pi()
     
-    hcsr04.init(gpio, UDS_TRIGER_PIN[3], UDS_ECHO_PIN[3])
+    hcsr04.init(gpio, UDS_TRIGER_PIN[1], UDS_ECHO_PIN[1])
     
     while(True):
         if(not hcsr04.getDistance()):

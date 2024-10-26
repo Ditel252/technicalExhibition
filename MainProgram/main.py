@@ -22,12 +22,12 @@ PAHSE_TAKE_OFF          = 5
 PHASE_END_PROGRAM       = 6
 
 BASE_BLDC_SPEED     = 275
-START_BLDC_SPEED    = 300
+START_BLDC_SPEED    = 290
 WAITING_BLDC_SPEED  = 230
 WAITTING_TIME_FOR_START_BLDC    = 250 # [ms]
 WAITTING_TIME_FOR_CHANGE_BLDC   = 100 # [ms]
 
-BLDC_BASE_GAIN = [1.0, 1.0, 1.0, 1.0,  0.435, 1.0, 1.0, 1.0]
+BLDC_BASE_GAIN = [1.0, 1.0, 1.0, 0.95,  0.55, 0.95, 1.0, 1.0]
 
 SAFETY_STOPPER:bool = True
 
@@ -320,6 +320,18 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     PID_Accl.K_D = 1
     
     PID_Accl.init()
+    
+    PID_Height = PID.Cteam_PID()
+    
+    PID_Height.enableKi = 0
+    PID_Height.enableKp = 1
+    PID_Height.enableKd = 0
+    
+    PID_Height.K_I = 0
+    PID_Height.K_P = 1
+    PID_Height.K_D = 0
+    
+    PID_Height.init()
     # ====PID Setting(this far)====
     
      # ===Waiting Command From Controller(from here)===
@@ -454,7 +466,11 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     
     permitRequestPhases.value = PHASE_END_PROGRAM
     
+    baseBldcSpeed:float = 0
+    
     while(permittedPhases.value < PHASE_END_PROGRAM):
+        
+        
         _escSpeedSum:float = [BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED]
         # Begin MainProgram While from here
         
