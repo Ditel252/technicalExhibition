@@ -453,30 +453,33 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         _escSpeedSum:float = [BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED, BASE_BLDC_SPEED]
         # Begin MainProgram While from here
         
-        if(True):
-            permitRequestPhases.value = PHASE_END_PROGRAM
+        
+        permitRequestPhases.value = PHASE_END_PROGRAM
+        
+        # if(True):
+        #     permitRequestPhases.value = PHASE_END_PROGRAM
             
-            _lastHeight = uds[4].distance
+        #     _lastHeight = uds[4].distance
             
-            if(uds[4].getDistance() == False):
-                print("{:<20} | False Get Heignt".format("Main Program"))
+        #     if(uds[4].getDistance() == False):
+        #         print("{:<20} | False Get Heignt".format("Main Program"))
                 
-            time.sleep(0.003)
+        #     time.sleep(0.003)
             
-            PID_Gyro[_gyroNum].K_I = 0.0 / 1.15
-            PID_Gyro[_gyroNum].K_P = 2.0 / 1.15
-            PID_Gyro[_gyroNum].K_D = 2.25
+        #     PID_Gyro[_gyroNum].K_I = 0.0 / 1.15
+        #     PID_Gyro[_gyroNum].K_P = 2.0 / 1.15
+        #     PID_Gyro[_gyroNum].K_D = 2.25
             
-            _nowReadTime = time.perf_counter()
-            if(_lastReadTime >= 0.0):
-                PID_Height.PID(0, REF_HEIGHT - uds[4].distance, float(_lastHeight - uds[4].distance) / float(_nowReadTime - _lastReadTime))
-            else:
-                PID_Height.PID(0, REF_HEIGHT - uds[4].distance, 0)
+        #     _nowReadTime = time.perf_counter()
+        #     if(_lastReadTime >= 0.0):
+        #         PID_Height.PID(0, REF_HEIGHT - uds[4].distance, float(_lastHeight - uds[4].distance) / float(_nowReadTime - _lastReadTime))
+        #     else:
+        #         PID_Height.PID(0, REF_HEIGHT - uds[4].distance, 0)
                 
-            _lastReadTime = _nowReadTime
+        #     _lastReadTime = _nowReadTime
                 
-            for _emcNum in range(0, 8, 1):
-                _escSpeedSum[_emcNum] += PID_Height.ans
+        #     for _emcNum in range(0, 8, 1):
+        #         _escSpeedSum[_emcNum] += PID_Height.ans
         
         PID_Gyro[1].PID(0, angle[1], angleRate[1])
     
