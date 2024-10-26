@@ -20,7 +20,7 @@ PAHSE_SET_READY         = 4
 PAHSE_SET_START         = 5
 PHASE_END_PROGRAM       = 6
 
-BLDC_BASE_GAIN = [1.0, 1.0, 1.0, 1.0,  0.435, 1.0, 1.0, 1.0]
+BLDC_BASE_GAIN = [1.0, 1.0, 1.0, 0.95,  0.55, 0.95, 1.0, 1.0]
 
 BASE_BLDC_SPEED = 280
 
@@ -367,7 +367,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     print("{:<20} | Order Measure Start".format("Main Program"))
     
     for _escNum in range(0, 8, 1):
-        esc[_escNum].setValue(300)
+        esc[_escNum].setValue(290)
     
     # ===Waiting Command From Controller(from here)===
     permitRequestPhases.value = PAHSE_SET_READY
