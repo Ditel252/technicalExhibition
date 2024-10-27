@@ -13,16 +13,16 @@ CMD_START_CALIBRATION   = 0x02
 CMD_START_MEASUREING    = 0x03
 CMD_ESC_START           = 0x04
 CMD_TAKE_OFF            = 0x05
-CMD_START_HEIGHT_PD     = 0x06
-CMD_END_PROGRAM         = 0x07
+# CMD_START_HEIGHT_PD     = 0x06
+CMD_END_PROGRAM         = 0x06
 
 PHASE_START_SETUP_ESC   = 1
 PHASE_START_CALIBRATION = 2
 PHASE_START_MEASUREING  = 3
 PHASE_ESC_START         = 4
 PAHSE_TAKE_OFF          = 5
-PAHSE_START_HEIGHT_PD   = 6
-PHASE_END_PROGRAM       = 7
+# PAHSE_START_HEIGHT_PD   = 6
+PHASE_END_PROGRAM       = 6
 
 MAX_BLDC_SPEED = 350
 # BASE_BLDC_SPEED     = 275
@@ -283,19 +283,19 @@ def safetyStopper(endReadPosture, permittedPhases, permitRequestPhases):
     permittedPhases.value = PAHSE_TAKE_OFF
     
     
-    if(SAFETY_STOPPER): # Start PD Height
-        while(permitRequestPhases.value < PAHSE_START_HEIGHT_PD):
-            pass
+    # if(SAFETY_STOPPER): # Start PD Height
+    #     while(permitRequestPhases.value < PAHSE_START_HEIGHT_PD):
+    #         pass
         
-        print("{:<20} $ Waiting For Start PD Calibration Command".format("Safety Stopper"))
-        while(not endReadPosture.value):
-            if(controllerRx.getReadByte()):
-                if(controllerRx.readByte == CMD_START_HEIGHT_PD):
-                    break
-            time.sleep(0.01)
-        print("{:<20} | Get Start Start PD Calibration Command".format("Safety Stopper"))
+    #     print("{:<20} $ Waiting For Start PD Calibration Command".format("Safety Stopper"))
+    #     while(not endReadPosture.value):
+    #         if(controllerRx.getReadByte()):
+    #             if(controllerRx.readByte == CMD_START_HEIGHT_PD):
+    #                 break
+    #         time.sleep(0.01)
+    #     print("{:<20} | Get Start Start PD Calibration Command".format("Safety Stopper"))
 
-    permittedPhases.value = PAHSE_START_HEIGHT_PD
+    # permittedPhases.value = PAHSE_START_HEIGHT_PD
 
     
     if(SAFETY_STOPPER): # Program End
@@ -487,7 +487,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     # ===Waiting Command From Controller(this far)===
     
     
-    permitRequestPhases.value = PAHSE_START_HEIGHT_PD
+    permitRequestPhases.value = PHASE_END_PROGRAM
     
     _velocityOfHeight:float = 0.0
     if(uds[4].getDistance() == False):
@@ -506,7 +506,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
         # Begin MainProgram While from here
         
         
-        permitRequestPhases.value = PHASE_END_PROGRAM
+        # permitRequestPhases.value = PHASE_END_PROGRAM
         
         # if(True):
         #     permitRequestPhases.value = PHASE_END_PROGRAM
