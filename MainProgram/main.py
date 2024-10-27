@@ -1,4 +1,4 @@
-# ver 0.9.19
+# ver 0.9.20
 import Cteam_MPU6050_Lite as MPU6050
 import Cteam_BLDC as BLDC
 import Cteam_ControllerReciver as CERx
@@ -36,7 +36,7 @@ WAITTING_TIME_FOR_CHANGE_BLDC   = 100.0 # [ms]
 
 REF_HEIGHT = 0.4 # [m]
 
-BLDC_BASE_GAIN = [1.0, 1.0, 1.0, 0.95,  0.89, 0.9425, 0.96, 1.05]
+BLDC_BASE_GAIN = [1.0, 1.0, 1.0, 0.95,  0.89, 0.9425, 0.9575, 1.05]
 
 SAFETY_STOPPER:bool = True
 
