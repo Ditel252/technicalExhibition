@@ -348,8 +348,8 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     PID_Height = PID.Cteam_PID()
     
     PID_Height.enableKi = 0
-    PID_Height.enableKp = 0
-    PID_Height.enableKd = 0
+    PID_Height.enableKp = 1
+    PID_Height.enableKd = 1
     
     PID_Height.K_I = 0
     PID_Height.K_P = 10
