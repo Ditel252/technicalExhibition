@@ -24,7 +24,7 @@ PAHSE_TAKE_OFF          = 5
 # PAHSE_START_HEIGHT_PD   = 6
 PHASE_END_PROGRAM       = 6
 
-MAX_BLDC_SPEED = 363
+MAX_BLDC_SPEED = 365
 # BASE_BLDC_SPEED     = 275
 BASE_BLDC_PERCENT = 85 # [%]
 # START_BLDC_SPEED    = 310
@@ -34,9 +34,9 @@ WAITING_BLDC_PERCENT = 75 # [%]
 WAITTING_TIME_FOR_START_BLDC    = 250.0 # [ms]
 WAITTING_TIME_FOR_CHANGE_BLDC   = 100.0 # [ms]
 
-REF_HEIGHT = 0.4 # [m]
+REF_HEIGHT = 0.3 # [m]
 
-BLDC_BASE_GAIN = [1.0, 1.0, 1.0, 0.95,  0.89, 0.9425, 0.9575, 1.05]
+BLDC_BASE_GAIN = [1.0, 1.0, 1.005, 0.95,  0.89, 0.9425, 0.9575, 1.05]
 
 SAFETY_STOPPER:bool = True
 
@@ -353,7 +353,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     
     PID_Height.K_I = 0
     PID_Height.K_P = 50
-    PID_Height.K_D = 50
+    PID_Height.K_D = 75
     
     PID_Height.init()
     # ====PID Setting(this far)====
