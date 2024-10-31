@@ -24,7 +24,7 @@ PAHSE_TAKE_OFF          = 5
 # PAHSE_START_HEIGHT_PD   = 6
 PHASE_END_PROGRAM       = 6
 
-MAX_BLDC_SPEED = 365
+MAX_BLDC_SPEED = 370
 # BASE_BLDC_SPEED     = 275
 BASE_BLDC_PERCENT = 85 # [%]
 # START_BLDC_SPEED    = 310
@@ -352,7 +352,7 @@ def mainProgram(endReadPosture, accl, velocity, displacement, angleAccl, angleRa
     PID_Height.enableKd = 1
     
     PID_Height.K_I = 0
-    PID_Height.K_P = 50
+    PID_Height.K_P = 75
     PID_Height.K_D = 75
     
     PID_Height.init()
