@@ -4,7 +4,7 @@ class Cteam_PID:
         self.K_P:float = 1.0
         self.K_D:float = 1.0
         
-        # When enable several Gain assignment 1. otherwise assignment 0
+        #  Enter 1 to enable each gain. Enter 0 to enable each gain.
         self.enableKp:int = 1
         self.enableKi:int = 1
         self.enableKd:int = 1
@@ -22,3 +22,5 @@ class Cteam_PID:
                 
     def PID(self, _integralValue:float, _rawValue:float, _diffrerentialValue:float):
         self.ans =  self.enableKi * self.K_I * _integralValue + self.enableKp * self.K_P * _rawValue + self.enableKd * self.K_D * _diffrerentialValue
+        
+        
