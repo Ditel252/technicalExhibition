@@ -2,6 +2,7 @@
 import time
 import sys
 import pigpio
+import math
 
 # 定数定義
 MAX_SIGNAL = 2000  # 最大パルス幅 [us]
@@ -23,6 +24,26 @@ class Cteam_BLDC:
         self.gpio.set_PWM_range(self.pwmPin, 40000)
         self.gpio.set_PWM_frequency(self.pwmPin, 50)
         self.value:int = MIN_SIGNAL
+        
+        self.maxValueOfMaxPercent:float = 1000
+        
+        # y = ax^2 + bx + c
+        self.proximityFormula_coefficientA:float = 1.0
+        self.proximityFormula_coefficientB:float = 1.0
+        self.proximityFormula_coefficientC:float = 1.0
+        
+        self.convertedValueFormPWM:float = 0.0
+        
+    def toDutyFromPercent(self, _percent:float):
+        _maxPWM:float = self.proximityFormula_coefficientA * ((self.maxValueOfMaxPercent + MIN_SIGNAL) ** 2) + self.proximityFormula_coefficientB * (self.maxValueOfMaxPercent + MIN_SIGNAL) + self.proximityFormula_coefficientC
+        _minPWM:float = self.proximityFormula_coefficientA * (MIN_SIGNAL ** 2) + self.proximityFormula_coefficientB *MIN_SIGNAL + self.proximityFormula_coefficientC
+        
+        _requestPWM:float = (_percent / 100.0) * (_maxPWM - _minPWM) + _minPWM
+        
+        self.convertedValueFormPWM = (-1 * self.proximityFormula_coefficientB + math.sqrt((self.proximityFormula_coefficientB ** 2) - 4 * self.proximityFormula_coefficientA * (self.proximityFormula_coefficientC - _requestPWM))) / (2 * self.proximityFormula_coefficientA) - MIN_SIGNAL
+        
+        if(self.convertedValueFormPWM > self.maxValueOfMaxPercent):
+            self.convertedValueFormPWM = self.maxValueOfMaxPercent
         
     def setValue(self, _value:int):
         # 入力が全て0, 0ならモータ停止
